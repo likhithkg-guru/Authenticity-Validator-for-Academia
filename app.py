@@ -1,5 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request
 import os
+
+from utils.ocr import extract_text_from_pdf, extract_details
+from utils.verifier import verify_document
 
 app = Flask(__name__)
 
@@ -37,9 +40,20 @@ def analyze():
 
     file.save(filepath)
 
+    # Extract text from PDF
+    text = extract_text_from_pdf(filepath)
+
+    # Extract important details
+    details = extract_details(text)
+    checks, score, status = verify_document(details, text)
     return render_template(
         "result.html",
-        filename=file.filename
+        filename=file.filename,
+        details=details,
+        extracted_text=text,
+        checks = checks,
+        score = score,
+        status = status
     )
 
 

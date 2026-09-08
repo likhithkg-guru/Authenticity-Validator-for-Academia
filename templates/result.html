@@ -1,22 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Verification Result</title>
-</head>
+<hr>
 
-<body>
+<h2>Verification Result</h2>
 
-    <h1>Document Uploaded Successfully ✅</h1>
+<h3>{{ status }}</h3>
 
-    <p>
-        File: {{ filename }}
-    </p>
+<p>
+    <b>Verification Score:</b> {{ score }}%
+</p>
 
-    <h2>Verification Status</h2>
+<h3>Verification Checks</h3>
 
-    <p>
-        Document analysis will be performed here.
-    </p>
+{% for check, passed in checks.items() %}
 
-</body>
-</html>
+    {% if passed %}
+        <p>✅ {{ check }}</p>
+    {% else %}
+        <p>❌ {{ check }}</p>
+    {% endif %}
+
+{% endfor %}
