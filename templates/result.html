@@ -19,3 +19,21 @@
     {% endif %}
 
 {% endfor %}
+<hr>
+
+<h2>Document Image Analysis</h2>
+
+<p>
+    <b>Image Quality:</b>
+    {{ image_info.image_quality }}
+</p>
+
+<p>
+    <b>Sharpness Score:</b>
+    {{ image_info.blur_score }}
+</p>
+
+<p>
+    <b>Resolution:</b>
+    {{ image_info.width }} × {{ image_info.height }}
+</p>
