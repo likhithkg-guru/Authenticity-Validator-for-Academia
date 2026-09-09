@@ -1,41 +1,86 @@
 import cv2
-import os
 import fitz
+import os
 
 
-def analyze_image(image_path):
+# ==================================================
+# ANALYZE DOCUMENT IMAGE
+# ==================================================
 
-    # If PDF, convert first page to image
-    if image_path.lower().endswith(".pdf"):
+def analyze_image(file_path):
 
-        pdf = fitz.open(image_path)
+    image = None
 
-        if len(pdf) == 0:
+
+    # ------------------------------------------
+    # PDF FILE
+    # ------------------------------------------
+
+    if file_path.lower().endswith(".pdf"):
+
+        try:
+
+            document = fitz.open(file_path)
+
+            if len(document) == 0:
+
+                return {
+                    "image_quality": "Unable to read document",
+                    "blur_score": 0,
+                    "width": 0,
+                    "height": 0
+                }
+
+            # First page
+            page = document[0]
+
+            # Convert PDF page to image
+            pix = page.get_pixmap(
+                matrix=fitz.Matrix(2, 2)
+            )
+
+            temp_path = os.path.join(
+                "static",
+                "uploads",
+                "temp_document.png"
+            )
+
+            pix.save(temp_path)
+
+            document.close()
+
+            # Read converted image
+            image = cv2.imread(
+                temp_path
+            )
+
+        except Exception:
+
             return {
-                "image_quality": "Unable to read document",
+                "image_quality": "Unable to analyze",
                 "blur_score": 0,
                 "width": 0,
                 "height": 0
             }
 
-        page = pdf[0]
 
-        # Render PDF page as image
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+    # ------------------------------------------
+    # IMAGE FILE
+    # ------------------------------------------
 
-        image = pix.tobytes("png")
+    else:
 
-        temp_image = "static/uploads/temp_page.png"
+        image = cv2.imread(
+            file_path
+        )
 
-        with open(temp_image, "wb") as f:
-            f.write(image)
 
-        image_path = temp_image
-
-    # Read image
-    image = cv2.imread(image_path)
+    # ------------------------------------------
+    # IMAGE CHECK
+    # ------------------------------------------
 
     if image is None:
+
         return {
             "image_quality": "Unable to read image",
             "blur_score": 0,
@@ -43,29 +88,61 @@ def analyze_image(image_path):
             "height": 0
         }
 
-    # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Calculate sharpness
+    # ------------------------------------------
+    # GRAYSCALE
+    # ------------------------------------------
+
+    gray = cv2.cvtColor(
+        image,
+        cv2.COLOR_BGR2GRAY
+    )
+
+
+    # ------------------------------------------
+    # SHARPNESS
+    # ------------------------------------------
+
     blur_score = cv2.Laplacian(
         gray,
         cv2.CV_64F
     ).var()
 
-    # Decide quality
-    if blur_score > 100:
+
+    # ------------------------------------------
+    # QUALITY
+    # ------------------------------------------
+
+    if blur_score >= 100:
+
         quality = "Good"
-    elif blur_score > 40:
+
+    elif blur_score >= 40:
+
         quality = "Moderate"
+
     else:
+
         quality = "Low"
 
-    # Get resolution
+
+    # ------------------------------------------
+    # RESOLUTION
+    # ------------------------------------------
+
     height, width = image.shape[:2]
 
+
     return {
+
         "image_quality": quality,
-        "blur_score": round(blur_score, 2),
+
+        "blur_score": round(
+            blur_score,
+            2
+        ),
+
         "width": width,
+
         "height": height
     }

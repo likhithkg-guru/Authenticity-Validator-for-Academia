@@ -1,9 +1,9 @@
 import re
 
 
-# --------------------------------------------------
-# EXTRACT IMPORTANT DETAILS FROM OCR TEXT
-# --------------------------------------------------
+# ==================================================
+# EXTRACT DETAILS
+# ==================================================
 
 def extract_details(text):
 
@@ -13,70 +13,142 @@ def extract_details(text):
         "date_of_birth": ""
     }
 
-    # ---------------- REGISTER NUMBER ----------------
-
-    register_patterns = [
-        r"Register\s*No\.?\s*[:\-]?\s*([A-Za-z0-9]{6,20})",
-        r"Register\s*Number\s*[:\-]?\s*([A-Za-z0-9]{6,20})",
-        r"Reg\s*No\.?\s*[:\-]?\s*([A-Za-z0-9]{6,20})"
-    ]
-
-    for pattern in register_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
-
-        if match:
-            details["register_number"] = match.group(1)
-            break
-
-
-    # ---------------- DATE OF BIRTH ----------------
-
-    dob_patterns = [
-        r"\b\d{2}[-/]\d{2}[-/]\d{4}\b",
-        r"\b\d{2}[-/]\d{2}[-/]\d{2}\b"
-    ]
-
-    for pattern in dob_patterns:
-        match = re.search(pattern, text)
-
-        if match:
-            details["date_of_birth"] = match.group(0)
-            break
-
-
-    # ---------------- CANDIDATE NAME ----------------
+    # ------------------------------------------
+    # Candidate Name
+    # ------------------------------------------
 
     name_patterns = [
-        r"Candidate'?s?\s*Name\s*[:\-]?\s*([A-Za-z ]{3,50})",
-        r"Candidate\s*Name\s*[:\-]?\s*([A-Za-z ]{3,50})"
+
+        r"Candidate['’]s\s*Name\s*[:\-]?\s*([A-Za-z ]{3,60})",
+
+        r"Candidate\s*Name\s*[:\-]?\s*([A-Za-z ]{3,60})",
+
+        r"Name\s*[:\-]\s*([A-Za-z ]{3,60})"
     ]
 
     for pattern in name_patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
 
         if match:
-            details["candidate_name"] = match.group(1).strip()
+
+            details["candidate_name"] = (
+                match.group(1)
+                .strip()
+            )
+
             break
+
+
+    # ------------------------------------------
+    # Register Number
+    # ------------------------------------------
+
+    register_patterns = [
+
+        r"Register\s*No\.?\s*[:\-]?\s*([A-Za-z0-9]{6,20})",
+
+        r"Register\s*Number\s*[:\-]?\s*([A-Za-z0-9]{6,20})",
+
+        r"Reg\.?\s*No\.?\s*[:\-]?\s*([A-Za-z0-9]{6,20})",
+
+        r"Reg\s*Number\s*[:\-]?\s*([A-Za-z0-9]{6,20})"
+    ]
+
+    for pattern in register_patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            details["register_number"] = (
+                match.group(1)
+                .strip()
+            )
+
+            break
+
+
+    # ------------------------------------------
+    # Date of Birth
+    # ------------------------------------------
+
+    dob_patterns = [
+
+        r"Date\s*of\s*Birth\s*[:\-]?\s*(\d{2}[-/]\d{2}[-/]\d{4})",
+
+        r"D\.?O\.?B\.?\s*[:\-]?\s*(\d{2}[-/]\d{2}[-/]\d{4})",
+
+        r"Birth\s*Date\s*[:\-]?\s*(\d{2}[-/]\d{2}[-/]\d{4})"
+    ]
+
+    for pattern in dob_patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            details["date_of_birth"] = (
+                match.group(1)
+            )
+
+            break
+
+
+    # ------------------------------------------
+    # Fallback DOB detection
+    # ------------------------------------------
+
+    if not details["date_of_birth"]:
+
+        match = re.search(
+            r"\b\d{2}[-/]\d{2}[-/]\d{4}\b",
+            text
+        )
+
+        if match:
+
+            details["date_of_birth"] = (
+                match.group(0)
+            )
 
 
     return details
 
 
-# --------------------------------------------------
+# ==================================================
 # VERIFY DOCUMENT
-# --------------------------------------------------
+# ==================================================
 
 def verify_document(details, text):
 
     checks = {}
+
     score = 0
+
     total_checks = 4
 
 
-    # 1. Candidate name
+    # ------------------------------------------
+    # Candidate Name
+    # ------------------------------------------
+
     if details.get("candidate_name"):
 
         checks["Candidate name"] = True
+
         score += 1
 
     else:
@@ -84,18 +156,25 @@ def verify_document(details, text):
         checks["Candidate name"] = False
 
 
-    # 2. Register number
+    # ------------------------------------------
+    # Register Number
+    # ------------------------------------------
+
     register_number = details.get(
         "register_number",
         ""
     )
 
-    if register_number and re.fullmatch(
-        r"[A-Za-z0-9]{6,20}",
+    if (
         register_number
+        and re.fullmatch(
+            r"[A-Za-z0-9]{6,20}",
+            register_number
+        )
     ):
 
         checks["Register number"] = True
+
         score += 1
 
     else:
@@ -103,7 +182,10 @@ def verify_document(details, text):
         checks["Register number"] = False
 
 
-    # 3. Date of birth
+    # ------------------------------------------
+    # Date of Birth
+    # ------------------------------------------
+
     dob = details.get(
         "date_of_birth",
         ""
@@ -115,6 +197,7 @@ def verify_document(details, text):
     ):
 
         checks["Date of birth"] = True
+
         score += 1
 
     else:
@@ -122,24 +205,35 @@ def verify_document(details, text):
         checks["Date of birth"] = False
 
 
-    # 4. Academic information
+    # ------------------------------------------
+    # Academic Information
+    # ------------------------------------------
 
     keywords = [
+
         "marks",
+
         "examination",
+
         "semester",
+
         "university"
     ]
 
     found_keywords = sum(
+
         1
+
         for word in keywords
+
         if word.lower() in text.lower()
     )
+
 
     if found_keywords >= 2:
 
         checks["Academic information"] = True
+
         score += 1
 
     else:
@@ -147,14 +241,18 @@ def verify_document(details, text):
         checks["Academic information"] = False
 
 
-    # ---------------- SCORE ----------------
+    # ------------------------------------------
+    # SCORE
+    # ------------------------------------------
 
     percentage = int(
         (score / total_checks) * 100
     )
 
 
-    # ---------------- STATUS ----------------
+    # ------------------------------------------
+    # STATUS
+    # ------------------------------------------
 
     if percentage >= 75:
 

@@ -8,6 +8,11 @@
     <b>Verification Score:</b> {{ score }}%
 </p>
 
+
+<!-- ========================================= -->
+<!-- VERIFICATION CHECKS -->
+<!-- ========================================= -->
+
 <h3>Verification Checks</h3>
 
 {% for check, passed in checks.items() %}
@@ -19,7 +24,14 @@
     {% endif %}
 
 {% endfor %}
+
+
 <hr>
+
+
+<!-- ========================================= -->
+<!-- DOCUMENT IMAGE ANALYSIS -->
+<!-- ========================================= -->
 
 <h2>Document Image Analysis</h2>
 
@@ -36,4 +48,24 @@
 <p>
     <b>Resolution:</b>
     {{ image_info.width }} × {{ image_info.height }}
+</p>
+
+
+<hr>
+
+
+<!-- ========================================= -->
+<!-- AUTHENTICITY ANALYSIS -->
+<!-- ========================================= -->
+
+<h2>Authenticity Analysis</h2>
+
+<p>
+    <b>Reference Comparison:</b>
+    {{ authenticity_result.status }}
+</p>
+
+<p>
+    <b>Visual Similarity:</b>
+    {{ authenticity_result.similarity }}%
 </p>
