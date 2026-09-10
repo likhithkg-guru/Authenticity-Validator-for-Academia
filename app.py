@@ -1,38 +1,40 @@
 from flask import Flask, render_template, request
 import os
-from werkzeug.utils import secure_filename
 
-# Utility functions
 from utils.ocr import extract_text_from_pdf
 from utils.verifier import extract_details, verify_document
 from utils.image_analyzer import analyze_image
-from utils.authenticity import compare_documents
+from utils.authenticity import find_best_reference
 
 
 app = Flask(__name__)
 
 
-# =========================================================
+# ==================================================
 # CONFIGURATION
-# =========================================================
+# ==================================================
 
-UPLOAD_FOLDER = "static/uploads"
+UPLOAD_FOLDER = "uploads"
 
 REFERENCE_FOLDER = "reference_documents"
-
-REFERENCE_FILE = "genuine_sample.pdf"
-
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-# Create upload folder if it doesn't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(
+    UPLOAD_FOLDER,
+    exist_ok=True
+)
+
+os.makedirs(
+    REFERENCE_FOLDER,
+    exist_ok=True
+)
 
 
-# =========================================================
-# HOME PAGE
-# =========================================================
+# ==================================================
+# HOME
+# ==================================================
 
 @app.route("/")
 def home():
@@ -42,9 +44,9 @@ def home():
     )
 
 
-# =========================================================
-# UPLOAD PAGE
-# =========================================================
+# ==================================================
+# UPLOAD
+# ==================================================
 
 @app.route("/upload")
 def upload():
@@ -54,16 +56,19 @@ def upload():
     )
 
 
-# =========================================================
-# ANALYZE DOCUMENT
-# =========================================================
+# ==================================================
+# ANALYZE
+# ==================================================
 
-@app.route("/analyze", methods=["POST"])
+@app.route(
+    "/analyze",
+    methods=["POST"]
+)
 def analyze():
 
-    # -----------------------------------------------------
+    # ----------------------------------------------
     # Check uploaded file
-    # -----------------------------------------------------
+    # ----------------------------------------------
 
     if "document" not in request.files:
 
@@ -73,144 +78,134 @@ def analyze():
     file = request.files["document"]
 
 
-    # -----------------------------------------------------
-    # Check filename
-    # -----------------------------------------------------
-
     if file.filename == "":
 
         return "No file selected"
 
 
-    # -----------------------------------------------------
-    # Secure filename
-    # -----------------------------------------------------
-
-    filename = secure_filename(
-        file.filename
-    )
-
-
-    # -----------------------------------------------------
-    # Create file path
-    # -----------------------------------------------------
+    # ----------------------------------------------
+    # Save document
+    # ----------------------------------------------
 
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"],
-        filename
+        file.filename
     )
-
-
-    # -----------------------------------------------------
-    # Save uploaded document
-    # -----------------------------------------------------
 
     file.save(filepath)
 
 
-    # =====================================================
-    # STEP 1 — OCR
-    # =====================================================
+    # ----------------------------------------------
+    # OCR
+    # ----------------------------------------------
 
     text = extract_text_from_pdf(
         filepath
     )
 
 
-    # =====================================================
-    # STEP 2 — EXTRACT DETAILS
-    # =====================================================
+    # ----------------------------------------------
+    # Extract details
+    # ----------------------------------------------
 
     details = extract_details(
         text
     )
 
 
-    # =====================================================
-    # STEP 3 — DOCUMENT VERIFICATION
-    # =====================================================
+    # ----------------------------------------------
+    # Verification
+    # ----------------------------------------------
 
-    checks, score, status = verify_document(
+    checks, score, verification_status = verify_document(
         details,
         text
     )
 
 
-    # =====================================================
-    # STEP 4 — IMAGE ANALYSIS
-    # =====================================================
+    # ----------------------------------------------
+    # Image analysis
+    # ----------------------------------------------
 
     image_info = analyze_image(
         filepath
     )
 
 
-    # =====================================================
-    # STEP 5 — REFERENCE DOCUMENT COMPARISON
-    # =====================================================
+    # ----------------------------------------------
+    # MULTIPLE REFERENCE MATCHING
+    # ----------------------------------------------
 
-    reference_path = os.path.join(
-        REFERENCE_FOLDER,
-        REFERENCE_FILE
+    authenticity_info = find_best_reference(
+        filepath,
+        REFERENCE_FOLDER
     )
 
 
-    # Check whether reference document exists
+    # ----------------------------------------------
+    # FINAL STATUS
+    # ----------------------------------------------
 
-    if os.path.exists(reference_path):
-
-        authenticity_result = compare_documents(
-            filepath,
-            reference_path
-        )
-
-    else:
-
-        authenticity_result = {
-
-            "similarity": 0,
-
-            "status": "Reference document not found"
-        }
+    final_status = verification_status
 
 
-    # =====================================================
-    # STEP 6 — DISPLAY RESULT
-    # =====================================================
+    if authenticity_info:
+
+        similarity = authenticity_info[
+            "similarity"
+        ]
+
+
+        if (
+            similarity >= 90
+            and score >= 75
+        ):
+
+            final_status = "LOW RISK"
+
+
+        elif (
+            similarity >= 70
+            and score >= 50
+        ):
+
+            final_status = "NEEDS REVIEW"
+
+
+        else:
+
+            final_status = "SUSPICIOUS"
+
+
+    # ----------------------------------------------
+    # RESULT
+    # ----------------------------------------------
 
     return render_template(
 
         "result.html",
 
-        # Uploaded filename
-        filename=filename,
+        filename=file.filename,
 
-        # OCR text
         text=text,
 
-        # Extracted details
         details=details,
 
-        # Verification checks
         checks=checks,
 
-        # Verification score
         score=score,
 
-        # Verification status
-        status=status,
+        status=final_status,
 
-        # Image analysis
         image_info=image_info,
 
-        # Authenticity comparison
-        authenticity_result=authenticity_result
+        authenticity_info=authenticity_info
     )
 
 
-# =========================================================
-# RUN APPLICATION
-# =========================================================
+# ==================================================
+# RUN
+# ==================================================
 
 if __name__ == "__main__":
 
