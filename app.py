@@ -10,65 +10,50 @@ from utils.authenticity import find_best_reference
 app = Flask(__name__)
 
 
-# ==================================================
-# CONFIGURATION
-# ==================================================
+# ==========================================
+# FOLDERS
+# ==========================================
 
 UPLOAD_FOLDER = "uploads"
-
 REFERENCE_FOLDER = "reference_documents"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True
-)
-
-os.makedirs(
-    REFERENCE_FOLDER,
-    exist_ok=True
-)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(REFERENCE_FOLDER, exist_ok=True)
 
 
-# ==================================================
+# ==========================================
 # HOME
-# ==================================================
+# ==========================================
 
 @app.route("/")
 def home():
 
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
-# ==================================================
-# UPLOAD
-# ==================================================
+# ==========================================
+# UPLOAD PAGE
+# ==========================================
 
 @app.route("/upload")
 def upload():
 
-    return render_template(
-        "upload.html"
-    )
+    return render_template("upload.html")
 
 
-# ==================================================
-# ANALYZE
-# ==================================================
+# ==========================================
+# ANALYZE DOCUMENT
+# ==========================================
 
-@app.route(
-    "/analyze",
-    methods=["POST"]
-)
+@app.route("/analyze", methods=["POST"])
 def analyze():
 
-    # ----------------------------------------------
-    # Check uploaded file
-    # ----------------------------------------------
+    # --------------------------------------
+    # CHECK FILE
+    # --------------------------------------
 
     if "document" not in request.files:
 
@@ -83,9 +68,9 @@ def analyze():
         return "No file selected"
 
 
-    # ----------------------------------------------
-    # Save document
-    # ----------------------------------------------
+    # --------------------------------------
+    # SAVE FILE
+    # --------------------------------------
 
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"],
@@ -95,46 +80,40 @@ def analyze():
     file.save(filepath)
 
 
-    # ----------------------------------------------
-    # OCR
-    # ----------------------------------------------
+    # ======================================
+    # 1. OCR ANALYSIS
+    # ======================================
 
-    text = extract_text_from_pdf(
-        filepath
-    )
+    text = extract_text_from_pdf(filepath)
 
 
-    # ----------------------------------------------
-    # Extract details
-    # ----------------------------------------------
+    # ======================================
+    # 2. EXTRACT DETAILS
+    # ======================================
 
-    details = extract_details(
-        text
-    )
+    details = extract_details(text)
 
 
-    # ----------------------------------------------
-    # Verification
-    # ----------------------------------------------
+    # ======================================
+    # 3. DOCUMENT VERIFICATION
+    # ======================================
 
-    checks, score, verification_status = verify_document(
+    checks, verification_score, verification_status = verify_document(
         details,
         text
     )
 
 
-    # ----------------------------------------------
-    # Image analysis
-    # ----------------------------------------------
+    # ======================================
+    # 4. IMAGE ANALYSIS
+    # ======================================
 
-    image_info = analyze_image(
-        filepath
-    )
+    image_info = analyze_image(filepath)
 
 
-    # ----------------------------------------------
-    # MULTIPLE REFERENCE MATCHING
-    # ----------------------------------------------
+    # ======================================
+    # 5. REFERENCE COMPARISON
+    # ======================================
 
     authenticity_info = find_best_reference(
         filepath,
@@ -142,44 +121,92 @@ def analyze():
     )
 
 
-    # ----------------------------------------------
-    # FINAL STATUS
-    # ----------------------------------------------
+    # ======================================
+    # 6. IMAGE QUALITY SCORE
+    # ======================================
 
-    final_status = verification_status
+    sharpness = image_info.get(
+        "blur_score",
+        0
+    )
 
+
+    if sharpness >= 100:
+
+        image_quality_score = 100
+
+    elif sharpness >= 40:
+
+        image_quality_score = 70
+
+    else:
+
+        image_quality_score = 40
+
+
+    # ======================================
+    # 7. VISUAL SIMILARITY SCORE
+    # ======================================
 
     if authenticity_info:
 
-        similarity = authenticity_info[
-            "similarity"
-        ]
+        similarity_score = authenticity_info.get(
+            "similarity",
+            0
+        )
+
+    else:
+
+        similarity_score = 0
 
 
-        if (
-            similarity >= 90
-            and score >= 75
-        ):
+    # ======================================
+    # 8. MULTI-SIGNAL SCORE
+    # ======================================
 
-            final_status = "LOW RISK"
+    overall_score = (
 
+        (verification_score * 0.40)
 
-        elif (
-            similarity >= 70
-            and score >= 50
-        ):
+        +
 
-            final_status = "NEEDS REVIEW"
+        (similarity_score * 0.40)
 
+        +
 
-        else:
+        (image_quality_score * 0.20)
 
-            final_status = "SUSPICIOUS"
+    )
 
 
-    # ----------------------------------------------
-    # RESULT
-    # ----------------------------------------------
+    overall_score = round(
+        overall_score,
+        2
+    )
+
+
+    # ======================================
+    # 9. FINAL STATUS
+    # ======================================
+
+    if overall_score >= 90:
+
+        final_status = "LOW RISK"
+
+
+    elif overall_score >= 70:
+
+        final_status = "NEEDS REVIEW"
+
+
+    else:
+
+        final_status = "SUSPICIOUS"
+
+
+    # ======================================
+    # 10. RENDER RESULT
+    # ======================================
 
     return render_template(
 
@@ -193,19 +220,26 @@ def analyze():
 
         checks=checks,
 
-        score=score,
+        score=verification_score,
 
         status=final_status,
 
         image_info=image_info,
 
-        authenticity_info=authenticity_info
+        authenticity_info=authenticity_info,
+
+        image_quality_score=image_quality_score,
+
+        similarity_score=similarity_score,
+
+        overall_score=overall_score
+
     )
 
 
-# ==================================================
-# RUN
-# ==================================================
+# ==========================================
+# RUN APPLICATION
+# ==========================================
 
 if __name__ == "__main__":
 

@@ -8,7 +8,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>Authenticity Verification Result</title>
+    <title>Verification Result</title>
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/style.css') }}">
@@ -18,639 +18,383 @@
 
 <body>
 
-<div class="page-wrapper">
 
-    <!-- ================= HEADER ================= -->
+<!-- =====================================================
+     HEADER
+===================================================== -->
 
-    <header class="top-header">
+<header class="top-header">
 
-        <div class="brand">
+    <div class="brand">
 
-            <div class="brand-icon">
-                🛡️
-            </div>
+        <div class="brand-icon">
+            🛡️
+        </div>
 
-            <div>
-                <h1>Authenticity Validator</h1>
+        <div>
 
-                <p>
-                    Academic Document Verification System
-                </p>
-            </div>
+            <h2>
+                Authenticity Validator
+            </h2>
+
+            <p>
+                Academic Document Verification System
+            </p>
 
         </div>
 
-        <div class="header-badge">
-            AI-Powered Analysis
-        </div>
-
-    </header>
+    </div>
 
 
+    <div class="header-badge">
+        AI-Powered Analysis
+    </div>
 
-    <!-- ================= MAIN ================= -->
-
-    <main class="dashboard">
-
-        <div class="page-title">
-
-            <div>
-                <h2>Verification Result</h2>
-
-                <p>
-                    Analysis completed for your uploaded document.
-                </p>
-            </div>
-
-        </div>
+</header>
 
 
 
-        <!-- ================= STATUS CARD ================= -->
+<!-- =====================================================
+     MAIN CONTAINER
+===================================================== -->
 
-        {% if status == "LOW RISK" %}
-
-        <section class="status-card low-risk">
-
-            <div class="status-icon">
-                ✓
-            </div>
-
-            <div class="status-content">
-
-                <span class="status-label">
-                    FINAL VERIFICATION STATUS
-                </span>
-
-                <h2>LOW RISK</h2>
-
-                <p>
-                    The document passed the available
-                    verification signals.
-                </p>
-
-            </div>
-
-            <div class="status-score">
-                {{ score }}%
-                <span>Verification</span>
-            </div>
-
-        </section>
+<main class="result-container">
 
 
-        {% elif status == "NEEDS REVIEW" %}
+    <!-- =================================================
+         PAGE TITLE
+    ================================================== -->
 
-        <section class="status-card review">
+    <div class="page-heading">
 
-            <div class="status-icon">
-                !
-            </div>
+        <h1>
+            Verification Result
+        </h1>
 
-            <div class="status-content">
+        <p>
+            Analysis completed for your uploaded document.
+        </p>
 
-                <span class="status-label">
-                    FINAL VERIFICATION STATUS
-                </span>
-
-                <h2>NEEDS REVIEW</h2>
-
-                <p>
-                    Some verification signals require
-                    further manual checking.
-                </p>
-
-            </div>
-
-            <div class="status-score">
-                {{ score }}%
-                <span>Verification</span>
-            </div>
-
-        </section>
-
-
-        {% else %}
-
-        <section class="status-card suspicious">
-
-            <div class="status-icon">
-                !
-            </div>
-
-            <div class="status-content">
-
-                <span class="status-label">
-                    FINAL VERIFICATION STATUS
-                </span>
-
-                <h2>SUSPICIOUS</h2>
-
-                <p>
-                    The document did not match enough
-                    of the available verification signals.
-                </p>
-
-            </div>
-
-            <div class="status-score">
-                {{ score }}%
-                <span>Verification</span>
-            </div>
-
-        </section>
-
-        {% endif %}
+    </div>
 
 
 
-        <!-- ================= SUMMARY CARDS ================= -->
+    <!-- =================================================
+         FINAL STATUS
+    ================================================== -->
 
-        <div class="summary-grid">
+    <section class="status-card">
 
-            <div class="summary-card">
 
-                <div class="summary-icon">
-                    📊
+        <div class="status-left">
+
+            {% if status == "LOW RISK" %}
+
+                <div class="status-icon success">
+                    ✓
                 </div>
 
-                <div>
-                    <span>Verification Score</span>
-                    <strong>{{ score }}%</strong>
+            {% elif status == "NEEDS REVIEW" %}
+
+                <div class="status-icon warning">
+                    !
                 </div>
-
-            </div>
-
-
-            <div class="summary-card">
-
-                <div class="summary-icon">
-                    🔍
-                </div>
-
-                <div>
-
-                    <span>Verification Checks</span>
-
-                    <strong>
-                        {{ checks.values() | select("equalto", true) | list | length }}
-                        / {{ checks | length }}
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            <div class="summary-card">
-
-                <div class="summary-icon">
-                    🖼️
-                </div>
-
-                <div>
-
-                    <span>Image Quality</span>
-
-                    <strong>
-                        {{ image_info.image_quality }}
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            <div class="summary-card">
-
-                <div class="summary-icon">
-                    🛡️
-                </div>
-
-                <div>
-
-                    <span>Reference Match</span>
-
-                    {% if authenticity_info %}
-
-                    <strong>
-                        {{ authenticity_info.similarity }}%
-                    </strong>
-
-                    {% else %}
-
-                    <strong>N/A</strong>
-
-                    {% endif %}
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- ================= TWO COLUMN AREA ================= -->
-
-        <div class="two-column">
-
-
-
-            <!-- ================= VERIFICATION CHECKS ================= -->
-
-            <section class="panel">
-
-                <div class="panel-header">
-
-                    <div class="panel-title-icon">
-                        🔍
-                    </div>
-
-                    <div>
-
-                        <h3>Verification Checks</h3>
-
-                        <p>
-                            Document information validation
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="check-list">
-
-                    {% for check, passed in checks.items() %}
-
-                    <div class="check-item">
-
-                        {% if passed %}
-
-                        <div class="check-circle passed">
-                            ✓
-                        </div>
-
-                        <div class="check-text">
-
-                            <strong>{{ check }}</strong>
-
-                            <span>
-                                Verification passed
-                            </span>
-
-                        </div>
-
-                        <div class="check-status passed-text">
-                            PASSED
-                        </div>
-
-                        {% else %}
-
-                        <div class="check-circle failed">
-                            ×
-                        </div>
-
-                        <div class="check-text">
-
-                            <strong>{{ check }}</strong>
-
-                            <span>
-                                Verification failed
-                            </span>
-
-                        </div>
-
-                        <div class="check-status failed-text">
-                            FAILED
-                        </div>
-
-                        {% endif %}
-
-                    </div>
-
-                    {% endfor %}
-
-                </div>
-
-            </section>
-
-
-
-            <!-- ================= EXTRACTED INFORMATION ================= -->
-
-            <section class="panel">
-
-                <div class="panel-header">
-
-                    <div class="panel-title-icon">
-                        📝
-                    </div>
-
-                    <div>
-
-                        <h3>Extracted Information</h3>
-
-                        <p>
-                            Data detected using OCR
-                        </p>
-
-                    </div>
-
-                </div>
-
-
-                <div class="info-list">
-
-                    <div class="info-item">
-
-                        <span>Candidate Name</span>
-
-                        <strong>
-
-                            {% if details.candidate_name %}
-                                {{ details.candidate_name }}
-                            {% else %}
-                                Not detected
-                            {% endif %}
-
-                        </strong>
-
-                    </div>
-
-
-                    <div class="info-item">
-
-                        <span>Register Number</span>
-
-                        <strong>
-
-                            {% if details.register_number %}
-                                {{ details.register_number }}
-                            {% else %}
-                                Not detected
-                            {% endif %}
-
-                        </strong>
-
-                    </div>
-
-
-                    <div class="info-item">
-
-                        <span>Date of Birth</span>
-
-                        <strong>
-
-                            {% if details.date_of_birth %}
-                                {{ details.date_of_birth }}
-                            {% else %}
-                                Not detected
-                            {% endif %}
-
-                        </strong>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        </div>
-
-
-
-        <!-- ================= AUTHENTICITY ANALYSIS ================= -->
-
-        <section class="panel authenticity-panel">
-
-            <div class="panel-header">
-
-                <div class="panel-title-icon">
-                    🛡️
-                </div>
-
-                <div>
-
-                    <h3>Authenticity Analysis</h3>
-
-                    <p>
-                        Visual comparison with reference documents
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            {% if authenticity_info %}
-
-            <div class="auth-grid">
-
-
-                <div class="auth-info">
-
-                    <div class="auth-detail">
-
-                        <span>
-                            Best Matching Reference
-                        </span>
-
-                        <strong>
-                            {{ authenticity_info.filename }}
-                        </strong>
-
-                    </div>
-
-
-                    <div class="auth-detail">
-
-                        <span>
-                            Reference Comparison
-                        </span>
-
-                        <strong>
-                            {{ authenticity_info.status }}
-                        </strong>
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="similarity-section">
-
-                    <div class="similarity-top">
-
-                        <span>
-                            Visual Similarity
-                        </span>
-
-                        <strong>
-                            {{ authenticity_info.similarity }}%
-                        </strong>
-
-                    </div>
-
-
-                    <div class="progress-bar">
-
-                        <div
-                            class="progress-fill"
-                            style="width: {{ authenticity_info.similarity }}%;">
-                        </div>
-
-                    </div>
-
-
-                    {% if authenticity_info.similarity >= 90 %}
-
-                    <div class="similarity-message high">
-                        ● High visual similarity
-                    </div>
-
-                    {% elif authenticity_info.similarity >= 70 %}
-
-                    <div class="similarity-message medium">
-                        ● Moderate visual similarity
-                    </div>
-
-                    {% else %}
-
-                    <div class="similarity-message low">
-                        ● Low visual similarity
-                    </div>
-
-                    {% endif %}
-
-                </div>
-
-            </div>
 
             {% else %}
 
-            <div class="no-reference">
-
-                <div>
-                    ⚠️
+                <div class="status-icon danger">
+                    !
                 </div>
-
-                <p>
-                    No reference documents are available
-                    for comparison.
-                </p>
-
-            </div>
 
             {% endif %}
 
-        </section>
+
+            <div>
+
+                <span class="status-label">
+                    FINAL VERIFICATION STATUS
+                </span>
 
 
+                <h2>
 
-        <!-- ================= IMAGE ANALYSIS ================= -->
+                    {% if status == "LOW RISK" %}
 
-        <section class="panel">
+                        LOW RISK
 
-            <div class="panel-header">
+                    {% elif status == "NEEDS REVIEW" %}
 
-                <div class="panel-title-icon">
-                    🖼️
-                </div>
+                        NEEDS REVIEW
 
-                <div>
+                    {% else %}
 
-                    <h3>Document Image Analysis</h3>
+                        SUSPICIOUS
+
+                    {% endif %}
+
+                </h2>
+
+
+                {% if status == "LOW RISK" %}
 
                     <p>
-                        Quality and resolution analysis
+                        The document matched most of the available
+                        verification signals.
                     </p>
 
-                </div>
+                {% elif status == "NEEDS REVIEW" %}
+
+                    <p>
+                        The document requires additional verification
+                        before being considered reliable.
+                    </p>
+
+                {% else %}
+
+                    <p>
+                        The document did not match enough of the
+                        available verification signals.
+                    </p>
+
+                {% endif %}
 
             </div>
 
-
-            <div class="analysis-grid">
-
-
-                <div class="analysis-card">
-
-                    <span class="analysis-icon">
-                        ✨
-                    </span>
-
-                    <span class="analysis-label">
-                        Image Quality
-                    </span>
-
-                    <strong>
-                        {{ image_info.image_quality }}
-                    </strong>
-
-                </div>
-
-
-                <div class="analysis-card">
-
-                    <span class="analysis-icon">
-                        🔬
-                    </span>
-
-                    <span class="analysis-label">
-                        Sharpness Score
-                    </span>
-
-                    <strong>
-                        {{ image_info.blur_score }}
-                    </strong>
-
-                </div>
-
-
-                <div class="analysis-card">
-
-                    <span class="analysis-icon">
-                        📐
-                    </span>
-
-                    <span class="analysis-label">
-                        Resolution
-                    </span>
-
-                    <strong>
-                        {{ image_info.width }}
-                        ×
-                        {{ image_info.height }}
-                    </strong>
-
-                </div>
-
-            </div>
-
-        </section>
+        </div>
 
 
 
-        <!-- ================= FILE INFORMATION ================= -->
+        <div class="status-score">
 
-        <section class="file-card">
+            <strong>
+                {{ overall_score }}%
+            </strong>
 
-            <div class="file-icon">
-                📄
+            <span>
+                Overall Risk Score
+            </span>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         SUMMARY CARDS
+    ================================================== -->
+
+    <section class="summary-grid">
+
+
+        <!-- Verification -->
+
+        <div class="summary-card">
+
+            <div class="summary-icon">
+                📊
             </div>
 
             <div>
 
                 <span>
-                    Uploaded Document
+                    Verification Score
                 </span>
 
                 <strong>
-                    {{ filename }}
+                    {{ score }}%
                 </strong>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Checks -->
+
+        <div class="summary-card">
+
+            <div class="summary-icon">
+                🔍
+            </div>
+
+            <div>
+
+                <span>
+                    Verification Checks
+                </span>
+
+                <strong>
+
+                    {% set passed_count =
+                        checks.values() | select("equalto", true) | list | length
+                    %}
+
+                    {{ passed_count }} / {{ checks|length }}
+
+                </strong>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Image -->
+
+        <div class="summary-card">
+
+            <div class="summary-icon">
+                🖼️
+            </div>
+
+            <div>
+
+                <span>
+                    Image Quality
+                </span>
+
+                <strong>
+                    {{ image_info.image_quality }}
+                </strong>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- Reference -->
+
+        <div class="summary-card">
+
+            <div class="summary-icon">
+                🛡️
+            </div>
+
+            <div>
+
+                <span>
+                    Reference Match
+                </span>
+
+                <strong>
+
+                    {% if authenticity_info %}
+
+                        {{ authenticity_info.similarity }}%
+
+                    {% else %}
+
+                        N/A
+
+                    {% endif %}
+
+                </strong>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =================================================
+         TWO COLUMN AREA
+    ================================================== -->
+
+    <div class="result-grid">
+
+
+        <!-- =================================================
+             VERIFICATION CHECKS
+        ================================================== -->
+
+        <section class="result-card">
+
+            <div class="card-heading">
+
+                <div class="card-icon">
+                    🔍
+                </div>
+
+                <div>
+
+                    <h3>
+                        Verification Checks
+                    </h3>
+
+                    <p>
+                        Document information validation
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <div class="checks-list">
+
+
+                {% for check, passed in checks.items() %}
+
+                    <div class="check-item">
+
+
+                        {% if passed %}
+
+                            <div class="check-status passed">
+                                ✓
+                            </div>
+
+                            <div class="check-content">
+
+                                <strong>
+                                    {{ check }}
+                                </strong>
+
+                                <span>
+                                    Verification passed
+                                </span>
+
+                            </div>
+
+                            <div class="check-result passed-text">
+                                PASSED
+                            </div>
+
+
+                        {% else %}
+
+                            <div class="check-status failed">
+                                ×
+                            </div>
+
+                            <div class="check-content">
+
+                                <strong>
+                                    {{ check }}
+                                </strong>
+
+                                <span>
+                                    Verification failed
+                                </span>
+
+                            </div>
+
+                            <div class="check-result failed-text">
+                                FAILED
+                            </div>
+
+                        {% endif %}
+
+
+                    </div>
+
+                {% endfor %}
+
 
             </div>
 
@@ -658,22 +402,26 @@
 
 
 
-        <!-- ================= OCR SECTION ================= -->
+        <!-- =================================================
+             EXTRACTED INFORMATION
+        ================================================== -->
 
-        <section class="panel ocr-panel">
+        <section class="result-card">
 
-            <div class="panel-header">
+            <div class="card-heading">
 
-                <div class="panel-title-icon">
-                    🔤
+                <div class="card-icon">
+                    📝
                 </div>
 
                 <div>
 
-                    <h3>Extracted OCR Text</h3>
+                    <h3>
+                        Extracted Information
+                    </h3>
 
                     <p>
-                        Raw text detected from the document
+                        Data detected using OCR
                     </p>
 
                 </div>
@@ -681,109 +429,673 @@
             </div>
 
 
-            <details>
+            <div class="information-list">
 
-                <summary>
-                    View extracted text
-                </summary>
 
-                <div class="ocr-box">
+                <div class="information-row">
 
-                    {% if text %}
+                    <span>
+                        Candidate Name
+                    </span>
 
-                    <pre>{{ text }}</pre>
+                    <strong>
+
+                        {% if details.candidate_name %}
+
+                            {{ details.candidate_name }}
+
+                        {% else %}
+
+                            Not detected
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+
+                <div class="information-row">
+
+                    <span>
+                        Register Number
+                    </span>
+
+                    <strong>
+
+                        {% if details.register_number %}
+
+                            {{ details.register_number }}
+
+                        {% else %}
+
+                            Not detected
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+
+                <div class="information-row">
+
+                    <span>
+                        Date of Birth
+                    </span>
+
+                    <strong>
+
+                        {% if details.date_of_birth %}
+
+                            {{ details.date_of_birth }}
+
+                        {% else %}
+
+                            Not detected
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+    </div>
+
+
+
+    <!-- =================================================
+         MULTI-SIGNAL ANALYSIS
+    ================================================== -->
+
+    <section class="result-card multi-signal-card">
+
+
+        <div class="card-heading">
+
+            <div class="card-icon">
+                🧠
+            </div>
+
+            <div>
+
+                <h3>
+                    Multi-Signal Risk Analysis
+                </h3>
+
+                <p>
+                    Combined analysis from multiple verification signals
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="signal-grid">
+
+
+            <!-- OCR -->
+
+            <div class="signal-card">
+
+                <div class="signal-top">
+
+                    <span>
+                        🔍 OCR Verification
+                    </span>
+
+                    <strong>
+                        {{ score }}%
+                    </strong>
+
+                </div>
+
+
+                <div class="signal-bar">
+
+                    <div class="signal-fill"
+                         style="width: {{ score }}%;">
+                    </div>
+
+                </div>
+
+
+                <small>
+                    Weight: 40%
+                </small>
+
+            </div>
+
+
+
+            <!-- VISUAL -->
+
+            <div class="signal-card">
+
+                <div class="signal-top">
+
+                    <span>
+                        🛡️ Visual Similarity
+                    </span>
+
+
+                    <strong>
+
+                        {% if authenticity_info %}
+
+                            {{ similarity_score }}%
+
+                        {% else %}
+
+                            N/A
+
+                        {% endif %}
+
+                    </strong>
+
+                </div>
+
+
+                <div class="signal-bar">
+
+                    {% if authenticity_info %}
+
+                        <div class="signal-fill"
+                             style="width: {{ similarity_score }}%;">
+                        </div>
 
                     {% else %}
 
-                    <p>
-                        No readable text was detected.
-                    </p>
+                        <div class="signal-fill"
+                             style="width: 0%;">
+                        </div>
 
                     {% endif %}
 
                 </div>
 
-            </details>
 
-        </section>
-
-
-
-        <!-- ================= DISCLAIMER ================= -->
-
-        <section class="disclaimer">
-
-            <div class="disclaimer-icon">
-                ⚠️
-            </div>
-
-            <div>
-
-                <h3>Important Note</h3>
-
-                <p>
-                    This system provides a prototype-based
-                    authenticity risk analysis using OCR,
-                    document checks, image quality analysis,
-                    and visual comparison with reference
-                    documents.
-                </p>
-
-                <p>
-                    A <b>LOW RISK</b> result does not guarantee
-                    that a document is genuine, while a
-                    <b>SUSPICIOUS</b> result does not by itself
-                    prove that a document is fraudulent.
-                    Further manual verification may be required.
-                </p>
+                <small>
+                    Weight: 40%
+                </small>
 
             </div>
 
-        </section>
 
 
+            <!-- IMAGE QUALITY -->
 
-        <!-- ================= BUTTONS ================= -->
+            <div class="signal-card">
 
-        <div class="action-buttons">
+                <div class="signal-top">
 
-            <a href="/upload"
-               class="primary-button">
+                    <span>
+                        🖼️ Image Quality
+                    </span>
 
-                🔄 Analyze Another Document
+                    <strong>
+                        {{ image_quality_score }}%
+                    </strong>
 
-            </a>
+                </div>
 
 
-            <a href="/"
-               class="secondary-button">
+                <div class="signal-bar">
 
-                🏠 Back to Home
+                    <div class="signal-fill"
+                         style="width: {{ image_quality_score }}%;">
+                    </div>
 
-            </a>
+                </div>
+
+
+                <small>
+                    Weight: 20%
+                </small>
+
+            </div>
+
 
         </div>
 
 
-    </main>
+
+        <!-- OVERALL -->
+
+        <div class="overall-score-box">
+
+
+            <div>
+
+                <span>
+                    OVERALL RISK SCORE
+                </span>
+
+                <strong>
+                    {{ overall_score }}%
+                </strong>
+
+            </div>
 
 
 
-    <!-- ================= FOOTER ================= -->
+            <div>
 
-    <footer>
 
-        <p>
-            Authenticity Validator • Academic Document Verification
-        </p>
+                {% if overall_score >= 90 %}
 
-        <p>
-            Prototype Project
-        </p>
+                    <div class="overall-result low">
+                        ✓ LOW RISK
+                    </div>
 
-    </footer>
 
-</div>
+                {% elif overall_score >= 70 %}
+
+                    <div class="overall-result medium">
+                        ! NEEDS REVIEW
+                    </div>
+
+
+                {% else %}
+
+                    <div class="overall-result high">
+                        ! SUSPICIOUS
+                    </div>
+
+                {% endif %}
+
+
+            </div>
+
+
+        </div>
+
+
+    </section>
+
+
+
+    <!-- =================================================
+         AUTHENTICITY ANALYSIS
+    ================================================== -->
+
+    <section class="result-card">
+
+
+        <div class="card-heading">
+
+            <div class="card-icon">
+                🛡️
+            </div>
+
+            <div>
+
+                <h3>
+                    Authenticity Analysis
+                </h3>
+
+                <p>
+                    Visual comparison with reference documents
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        {% if authenticity_info %}
+
+
+            <div class="authenticity-result">
+
+
+                <div class="auth-row">
+
+                    <span>
+                        Best Matching Reference
+                    </span>
+
+                    <strong>
+                        {{ authenticity_info.filename }}
+                    </strong>
+
+                </div>
+
+
+
+                <div class="auth-row">
+
+                    <span>
+                        Reference Comparison
+                    </span>
+
+                    <strong>
+                        {{ authenticity_info.status }}
+                    </strong>
+
+                </div>
+
+
+
+                <div class="auth-row">
+
+                    <span>
+                        Visual Similarity
+                    </span>
+
+                    <strong>
+                        {{ authenticity_info.similarity }}%
+                    </strong>
+
+                </div>
+
+
+
+                {% if authenticity_info.similarity >= 90 %}
+
+                    <div class="auth-message success-message">
+                        🟢 High visual similarity with the reference document.
+                    </div>
+
+
+                {% elif authenticity_info.similarity >= 70 %}
+
+                    <div class="auth-message warning-message">
+                        🟡 Moderate visual similarity. Further review may be required.
+                    </div>
+
+
+                {% else %}
+
+                    <div class="auth-message danger-message">
+                        🔴 Low visual similarity with the available reference.
+                    </div>
+
+                {% endif %}
+
+
+            </div>
+
+
+        {% else %}
+
+
+            <div class="no-reference">
+
+                ⚠️
+
+                <p>
+                    No reference documents are available for comparison.
+                </p>
+
+                <span>
+                    Add genuine reference documents to enable visual comparison.
+                </span>
+
+            </div>
+
+
+        {% endif %}
+
+
+    </section>
+
+
+
+    <!-- =================================================
+         DOCUMENT IMAGE ANALYSIS
+    ================================================== -->
+
+    <section class="result-card">
+
+
+        <div class="card-heading">
+
+            <div class="card-icon">
+                🖼️
+            </div>
+
+            <div>
+
+                <h3>
+                    Document Image Analysis
+                </h3>
+
+                <p>
+                    Quality and resolution analysis
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="image-analysis-grid">
+
+
+            <div class="analysis-item">
+
+                <span>
+                    ✨
+                </span>
+
+                <small>
+                    Image Quality
+                </small>
+
+                <strong>
+                    {{ image_info.image_quality }}
+                </strong>
+
+            </div>
+
+
+
+            <div class="analysis-item">
+
+                <span>
+                    🔬
+                </span>
+
+                <small>
+                    Sharpness Score
+                </small>
+
+                <strong>
+                    {{ image_info.blur_score }}
+                </strong>
+
+            </div>
+
+
+
+            <div class="analysis-item">
+
+                <span>
+                    📐
+                </span>
+
+                <small>
+                    Resolution
+                </small>
+
+                <strong>
+                    {{ image_info.width }}
+                    ×
+                    {{ image_info.height }}
+                </strong>
+
+            </div>
+
+
+        </div>
+
+
+    </section>
+
+
+
+    <!-- =================================================
+         UPLOADED DOCUMENT
+    ================================================== -->
+
+    <section class="result-card uploaded-card">
+
+
+        <div class="uploaded-icon">
+            📄
+        </div>
+
+
+        <div>
+
+            <span>
+                Uploaded Document
+            </span>
+
+            <strong>
+                {{ filename }}
+            </strong>
+
+        </div>
+
+
+    </section>
+
+
+
+    <!-- =================================================
+         OCR TEXT
+    ================================================== -->
+
+    <section class="result-card ocr-card">
+
+
+        <div class="card-heading">
+
+            <div class="card-icon">
+                🔤
+            </div>
+
+            <div>
+
+                <h3>
+                    Extracted OCR Text
+                </h3>
+
+                <p>
+                    Raw text detected from the document
+                </p>
+
+            </div>
+
+        </div>
+
+
+
+        <details>
+
+            <summary>
+                View extracted text
+            </summary>
+
+
+            <pre>{{ text }}</pre>
+
+
+        </details>
+
+
+    </section>
+
+
+
+    <!-- =================================================
+         BUTTONS
+    ================================================== -->
+
+    <div class="action-buttons">
+
+
+        <a href="/upload"
+           class="action-button primary">
+
+            📄
+            Analyze Another Document
+
+        </a>
+
+
+
+        <a href="/"
+           class="action-button secondary">
+
+            🏠
+            Back to Home
+
+        </a>
+
+
+    </div>
+
+
+
+    <!-- =================================================
+         IMPORTANT NOTE
+    ================================================== -->
+
+    <section class="important-note">
+
+
+        <div class="note-icon">
+            ⚠️
+        </div>
+
+
+        <div>
+
+            <h3>
+                Important Note
+            </h3>
+
+            <p>
+
+                This system provides a prototype-based authenticity
+                risk analysis using OCR, document checks, image quality
+                analysis, and visual comparison with reference documents.
+
+            </p>
+
+            <p>
+
+                A <strong>LOW RISK</strong> result does not guarantee
+                that a document is genuine, while a
+                <strong>SUSPICIOUS</strong> result does not by itself
+                prove that a document is fraudulent. Further manual
+                verification may be required.
+
+            </p>
+
+        </div>
+
+
+    </section>
+
+
+</main>
+
 
 </body>
 
