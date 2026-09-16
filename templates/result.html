@@ -2,16 +2,617 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <title>Verification Result | Authenticity Validator</title>
 
-    <title>Verification Result</title>
+    <style>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+
+        /* ========================= */
+        /* HEADER */
+        /* ========================= */
+
+        .header {
+            background: #0f172a;
+            color: white;
+            padding: 22px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-top: 3px;
+        }
+
+        .home-btn {
+            text-decoration: none;
+            background: white;
+            color: #0f172a;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .home-btn:hover {
+            background: #e2e8f0;
+        }
+
+
+        /* ========================= */
+        /* MAIN CONTAINER */
+        /* ========================= */
+
+        .container {
+            max-width: 1200px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+
+        /* ========================= */
+        /* TITLE */
+        /* ========================= */
+
+        .page-title {
+            margin-bottom: 25px;
+        }
+
+        .page-title h2 {
+            font-size: 30px;
+            color: #0f172a;
+        }
+
+        .page-title p {
+            color: #64748b;
+            margin-top: 5px;
+        }
+
+
+        /* ========================= */
+        /* CARDS */
+        /* ========================= */
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(15, 23, 42, 0.07);
+            border: 1px solid #e2e8f0;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #0f172a;
+            margin-bottom: 20px;
+        }
+
+
+        /* ========================= */
+        /* OVERALL RESULT */
+        /* ========================= */
+
+        .result-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .result-left h3 {
+            font-size: 17px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .overall-score {
+            font-size: 52px;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        .result-description {
+            color: #64748b;
+            margin-top: 8px;
+        }
+
+
+        /* ========================= */
+        /* STATUS BADGES */
+        /* ========================= */
+
+        .status-badge {
+            display: inline-block;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .low-risk {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .review {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .suspicious {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+
+        /* ========================= */
+        /* VERIFICATION GRID */
+        /* ========================= */
+
+        .checks-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .check {
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .check-name {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .check-pass {
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        .check-fail {
+            color: #dc2626;
+            font-weight: bold;
+        }
+
+
+        /* ========================= */
+        /* INFORMATION TABLE */
+        /* ========================= */
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-table tr {
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .info-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .info-table td {
+            padding: 14px 10px;
+        }
+
+        .info-label {
+            width: 35%;
+            font-weight: bold;
+            color: #475569;
+        }
+
+        .info-value {
+            color: #0f172a;
+        }
+
+
+        /* ========================= */
+        /* RISK ANALYSIS */
+        /* ========================= */
+
+        .risk-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .risk-box {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .risk-box h4 {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .risk-value {
+            font-size: 27px;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+
+        /* ========================= */
+        /* ML ANOMALY DETECTION */
+        /* ========================= */
+
+        .ml-result {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 22px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+        }
+
+        .ml-score {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .ml-score span {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .ml-score strong {
+            font-size: 36px;
+            color: #0f172a;
+        }
+
+        .ml-explanation {
+            margin-top: 18px;
+            padding: 18px;
+            border-radius: 12px;
+            background: #f8fafc;
+        }
+
+        .ml-explanation strong {
+            color: #0f172a;
+        }
+
+        .ml-explanation p {
+            margin-top: 7px;
+            color: #475569;
+        }
+
+        .ml-note {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        .ml-unavailable {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 18px;
+            border-radius: 12px;
+            background: #fff7ed;
+            color: #9a3412;
+        }
+
+        .ml-unavailable p {
+            margin-top: 5px;
+            color: #64748b;
+        }
+
+
+        /* ========================= */
+        /* REFERENCE COMPARISON */
+        /* ========================= */
+
+        .reference-box {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .reference-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .reference-row:last-child {
+            border-bottom: none;
+        }
+
+        .reference-label {
+            color: #64748b;
+        }
+
+        .reference-value {
+            font-weight: bold;
+        }
+
+        .no-reference {
+            padding: 18px;
+            border-radius: 12px;
+            background: #f8fafc;
+            color: #64748b;
+        }
+
+
+        /* ========================= */
+        /* WHY RESULT */
+        /* ========================= */
+
+        .summary-box {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #475569;
+        }
+
+        .summary-box p {
+            color: #475569;
+            margin-top: 7px;
+        }
+
+        .reason-list {
+            padding-left: 20px;
+        }
+
+        .reason-list li {
+            margin-bottom: 10px;
+            color: #475569;
+        }
+
+
+        /* ========================= */
+        /* IMAGE ANALYSIS */
+        /* ========================= */
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .image-box {
+            padding: 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+        }
+
+        .image-box h4 {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 7px;
+        }
+
+        .image-box strong {
+            font-size: 22px;
+            color: #0f172a;
+        }
+
+
+        /* ========================= */
+        /* OCR TEXT */
+        /* ========================= */
+
+        details {
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        .ocr-text {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            color: #334155;
+        }
+
+
+        /* ========================= */
+        /* FILE INFO */
+        /* ========================= */
+
+        .file-box {
+            padding: 18px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #0f172a;
+            word-break: break-all;
+        }
+
+
+        /* ========================= */
+        /* BUTTONS */
+        /* ========================= */
+
+        .button-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            padding: 12px 22px;
+            border-radius: 9px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: #0f172a;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1e293b;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+
+        /* ========================= */
+        /* DISCLAIMER */
+        /* ========================= */
+
+        .disclaimer {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            padding: 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+
+        /* ========================= */
+        /* FOOTER */
+        /* ========================= */
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #64748b;
+            font-size: 13px;
+        }
+
+
+        /* ========================= */
+        /* RESPONSIVE */
+        /* ========================= */
+
+        @media (max-width: 900px) {
+
+            .checks-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .risk-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .image-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
+        @media (max-width: 600px) {
+
+            .header {
+                padding: 18px 20px;
+            }
+
+            .header h1 {
+                font-size: 19px;
+            }
+
+            .container {
+                margin-top: 25px;
+            }
+
+            .result-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .overall-score {
+                font-size: 42px;
+            }
+
+            .checks-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .ml-result {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .info-table td {
+                display: block;
+                width: 100%;
+            }
+
+            .info-label {
+                padding-bottom: 2px !important;
+            }
+
+            .button-container {
+                flex-direction: column;
+            }
+
+            .btn {
+                text-align: center;
+            }
+        }
+
+    </style>
 
 </head>
 
@@ -19,267 +620,235 @@
 <body>
 
 
-<!-- =====================================================
-     HEADER
-===================================================== -->
+<!-- ========================= -->
+<!-- HEADER -->
+<!-- ========================= -->
 
-<header class="top-header">
+<header class="header">
 
-    <div class="brand">
+    <div>
 
-        <div class="brand-icon">
-            🛡️
-        </div>
+        <h1>🔍 Authenticity Validator</h1>
 
-        <div>
-
-            <h2>
-                Authenticity Validator
-            </h2>
-
-            <p>
-                Academic Document Verification System
-            </p>
-
-        </div>
+        <p>
+            Academic Document Verification System
+        </p>
 
     </div>
 
-
-    <div class="header-badge">
-        AI-Powered Analysis
-    </div>
+    <a href="/" class="home-btn">
+        ← Home
+    </a>
 
 </header>
 
 
 
-<!-- =====================================================
-     MAIN CONTAINER
-===================================================== -->
-
-<main class="result-container">
+<main class="container">
 
 
-    <!-- =================================================
-         PAGE TITLE
-    ================================================== -->
+    <!-- ========================= -->
+    <!-- PAGE TITLE -->
+    <!-- ========================= -->
 
-    <div class="page-heading">
+    <div class="page-title">
 
-        <h1>
-            Verification Result
-        </h1>
+        <h2>Verification Result</h2>
 
         <p>
-            Analysis completed for your uploaded document.
+            Multi-signal analysis of the uploaded academic document.
         </p>
 
     </div>
 
 
 
-    <!-- =================================================
-         FINAL STATUS
-    ================================================== -->
+    <!-- ========================= -->
+    <!-- OVERALL RESULT -->
+    <!-- ========================= -->
 
-    <section class="status-card">
+    <div class="card result-card">
+
+        <div class="result-left">
+
+            <h3>Overall Risk Assessment</h3>
+
+            <div class="overall-score">
+                {{ overall_score }}%
+            </div>
+
+            <p class="result-description">
+                Combined score from document verification,
+                visual comparison and image quality.
+            </p>
+
+        </div>
 
 
-        <div class="status-left">
+        <div>
 
             {% if status == "LOW RISK" %}
 
-                <div class="status-icon success">
-                    ✓
-                </div>
+                <span class="status-badge low-risk">
+                    ✓ LOW RISK
+                </span>
 
             {% elif status == "NEEDS REVIEW" %}
 
-                <div class="status-icon warning">
-                    !
-                </div>
+                <span class="status-badge review">
+                    ⚠ NEEDS REVIEW
+                </span>
 
             {% else %}
 
-                <div class="status-icon danger">
-                    !
-                </div>
+                <span class="status-badge suspicious">
+                    ⚠ SUSPICIOUS
+                </span>
 
             {% endif %}
 
+        </div>
 
-            <div>
-
-                <span class="status-label">
-                    FINAL VERIFICATION STATUS
-                </span>
+    </div>
 
 
-                <h2>
 
-                    {% if status == "LOW RISK" %}
+    <!-- ========================= -->
+    <!-- VERIFICATION CHECKS -->
+    <!-- ========================= -->
 
-                        LOW RISK
+    <div class="card">
 
-                    {% elif status == "NEEDS REVIEW" %}
+        <div class="card-title">
+            ✅ Verification Checks
+        </div>
 
-                        NEEDS REVIEW
+
+        <div class="checks-grid">
+
+            {% for name, passed in checks.items() %}
+
+                <div class="check">
+
+                    <div class="check-name">
+                        {{ name }}
+                    </div>
+
+                    {% if passed %}
+
+                        <div class="check-pass">
+                            ✓ Passed
+                        </div>
 
                     {% else %}
 
-                        SUSPICIOUS
+                        <div class="check-fail">
+                            ✗ Failed
+                        </div>
 
                     {% endif %}
 
-                </h2>
+                </div>
 
-
-                {% if status == "LOW RISK" %}
-
-                    <p>
-                        The document matched most of the available
-                        verification signals.
-                    </p>
-
-                {% elif status == "NEEDS REVIEW" %}
-
-                    <p>
-                        The document requires additional verification
-                        before being considered reliable.
-                    </p>
-
-                {% else %}
-
-                    <p>
-                        The document did not match enough of the
-                        available verification signals.
-                    </p>
-
-                {% endif %}
-
-            </div>
+            {% endfor %}
 
         </div>
 
+    </div>
 
 
-        <div class="status-score">
 
-            <strong>
-                {{ overall_score }}%
-            </strong>
+    <!-- ========================= -->
+    <!-- EXTRACTED INFORMATION -->
+    <!-- ========================= -->
 
-            <span>
-                Overall Risk Score
-            </span>
+    <div class="card">
 
+        <div class="card-title">
+            👤 Extracted Information
         </div>
 
-    </section>
+
+        <table class="info-table">
+
+            <tr>
+
+                <td class="info-label">
+                    Candidate Name
+                </td>
+
+                <td class="info-value">
+                    {{ details.candidate_name or "Not detected" }}
+                </td>
+
+            </tr>
+
+
+            <tr>
+
+                <td class="info-label">
+                    Register Number
+                </td>
+
+                <td class="info-value">
+                    {{ details.register_number or "Not detected" }}
+                </td>
+
+            </tr>
+
+
+            <tr>
+
+                <td class="info-label">
+                    Date of Birth
+                </td>
+
+                <td class="info-value">
+                    {{ details.date_of_birth or "Not detected" }}
+                </td>
+
+            </tr>
+
+        </table>
+
+    </div>
 
 
 
-    <!-- =================================================
-         SUMMARY CARDS
-    ================================================== -->
+    <!-- ========================= -->
+    <!-- MULTI-SIGNAL RISK ANALYSIS -->
+    <!-- ========================= -->
 
-    <section class="summary-grid">
+    <div class="card">
+
+        <div class="card-title">
+            📊 Multi-Signal Risk Analysis
+        </div>
 
 
-        <!-- Verification -->
+        <div class="risk-grid">
 
-        <div class="summary-card">
 
-            <div class="summary-icon">
-                📊
-            </div>
+            <div class="risk-box">
 
-            <div>
+                <h4>
+                    OCR Verification
+                </h4>
 
-                <span>
-                    Verification Score
-                </span>
-
-                <strong>
+                <div class="risk-value">
                     {{ score }}%
-                </strong>
+                </div>
 
             </div>
 
-        </div>
 
+            <div class="risk-box">
 
+                <h4>
+                    Visual Similarity
+                </h4>
 
-        <!-- Checks -->
-
-        <div class="summary-card">
-
-            <div class="summary-icon">
-                🔍
-            </div>
-
-            <div>
-
-                <span>
-                    Verification Checks
-                </span>
-
-                <strong>
-
-                    {% set passed_count =
-                        checks.values() | select("equalto", true) | list | length
-                    %}
-
-                    {{ passed_count }} / {{ checks|length }}
-
-                </strong>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- Image -->
-
-        <div class="summary-card">
-
-            <div class="summary-icon">
-                🖼️
-            </div>
-
-            <div>
-
-                <span>
-                    Image Quality
-                </span>
-
-                <strong>
-                    {{ image_info.image_quality }}
-                </strong>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- Reference -->
-
-        <div class="summary-card">
-
-            <div class="summary-icon">
-                🛡️
-            </div>
-
-            <div>
-
-                <span>
-                    Reference Match
-                </span>
-
-                <strong>
+                <div class="risk-value">
 
                     {% if authenticity_info %}
 
@@ -291,538 +860,201 @@
 
                     {% endif %}
 
-                </strong>
+                </div>
 
             </div>
+
+
+            <div class="risk-box">
+
+                <h4>
+                    Image Quality
+                </h4>
+
+                <div class="risk-value">
+                    {{ image_info.image_quality }}
+                </div>
+
+            </div>
+
 
         </div>
-
-    </section>
-
-
-
-    <!-- =================================================
-         TWO COLUMN AREA
-    ================================================== -->
-
-    <div class="result-grid">
-
-
-        <!-- =================================================
-             VERIFICATION CHECKS
-        ================================================== -->
-
-        <section class="result-card">
-
-            <div class="card-heading">
-
-                <div class="card-icon">
-                    🔍
-                </div>
-
-                <div>
-
-                    <h3>
-                        Verification Checks
-                    </h3>
-
-                    <p>
-                        Document information validation
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="checks-list">
-
-
-                {% for check, passed in checks.items() %}
-
-                    <div class="check-item">
-
-
-                        {% if passed %}
-
-                            <div class="check-status passed">
-                                ✓
-                            </div>
-
-                            <div class="check-content">
-
-                                <strong>
-                                    {{ check }}
-                                </strong>
-
-                                <span>
-                                    Verification passed
-                                </span>
-
-                            </div>
-
-                            <div class="check-result passed-text">
-                                PASSED
-                            </div>
-
-
-                        {% else %}
-
-                            <div class="check-status failed">
-                                ×
-                            </div>
-
-                            <div class="check-content">
-
-                                <strong>
-                                    {{ check }}
-                                </strong>
-
-                                <span>
-                                    Verification failed
-                                </span>
-
-                            </div>
-
-                            <div class="check-result failed-text">
-                                FAILED
-                            </div>
-
-                        {% endif %}
-
-
-                    </div>
-
-                {% endfor %}
-
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             EXTRACTED INFORMATION
-        ================================================== -->
-
-        <section class="result-card">
-
-            <div class="card-heading">
-
-                <div class="card-icon">
-                    📝
-                </div>
-
-                <div>
-
-                    <h3>
-                        Extracted Information
-                    </h3>
-
-                    <p>
-                        Data detected using OCR
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="information-list">
-
-
-                <div class="information-row">
-
-                    <span>
-                        Candidate Name
-                    </span>
-
-                    <strong>
-
-                        {% if details.candidate_name %}
-
-                            {{ details.candidate_name }}
-
-                        {% else %}
-
-                            Not detected
-
-                        {% endif %}
-
-                    </strong>
-
-                </div>
-
-
-
-                <div class="information-row">
-
-                    <span>
-                        Register Number
-                    </span>
-
-                    <strong>
-
-                        {% if details.register_number %}
-
-                            {{ details.register_number }}
-
-                        {% else %}
-
-                            Not detected
-
-                        {% endif %}
-
-                    </strong>
-
-                </div>
-
-
-
-                <div class="information-row">
-
-                    <span>
-                        Date of Birth
-                    </span>
-
-                    <strong>
-
-                        {% if details.date_of_birth %}
-
-                            {{ details.date_of_birth }}
-
-                        {% else %}
-
-                            Not detected
-
-                        {% endif %}
-
-                    </strong>
-
-                </div>
-
-
-            </div>
-
-        </section>
-
 
     </div>
 
 
 
-    <!-- =================================================
-         MULTI-SIGNAL ANALYSIS
-    ================================================== -->
+    <!-- ========================= -->
+    <!-- ML ANOMALY DETECTION -->
+    <!-- ========================= -->
 
-    <section class="result-card multi-signal-card">
+    <div class="card">
 
-
-        <div class="card-heading">
-
-            <div class="card-icon">
-                🧠
-            </div>
-
-            <div>
-
-                <h3>
-                    Multi-Signal Risk Analysis
-                </h3>
-
-                <p>
-                    Combined analysis from multiple verification signals
-                </p>
-
-            </div>
-
+        <div class="card-title">
+            🤖 ML Anomaly Detection
         </div>
 
 
+        {% if ml_result and ml_result.available %}
 
-        <div class="signal-grid">
+
+            <div class="ml-result">
 
 
-            <!-- OCR -->
-
-            <div class="signal-card">
-
-                <div class="signal-top">
+                <div class="ml-score">
 
                     <span>
-                        🔍 OCR Verification
+                        ML Anomaly Score
                     </span>
 
                     <strong>
-                        {{ score }}%
+                        {{ ml_result.anomaly_score }}%
                     </strong>
 
                 </div>
 
 
-                <div class="signal-bar">
+                <div>
 
-                    <div class="signal-fill"
-                         style="width: {{ score }}%;">
-                    </div>
+                    {% if ml_result.status == "NORMAL PATTERN" %}
 
-                </div>
-
-
-                <small>
-                    Weight: 40%
-                </small>
-
-            </div>
-
-
-
-            <!-- VISUAL -->
-
-            <div class="signal-card">
-
-                <div class="signal-top">
-
-                    <span>
-                        🛡️ Visual Similarity
-                    </span>
-
-
-                    <strong>
-
-                        {% if authenticity_info %}
-
-                            {{ similarity_score }}%
-
-                        {% else %}
-
-                            N/A
-
-                        {% endif %}
-
-                    </strong>
-
-                </div>
-
-
-                <div class="signal-bar">
-
-                    {% if authenticity_info %}
-
-                        <div class="signal-fill"
-                             style="width: {{ similarity_score }}%;">
-                        </div>
+                        <span class="status-badge low-risk">
+                            ✓ NORMAL PATTERN
+                        </span>
 
                     {% else %}
 
-                        <div class="signal-fill"
-                             style="width: 0%;">
-                        </div>
+                        <span class="status-badge suspicious">
+                            ⚠ ANOMALOUS PATTERN
+                        </span>
 
                     {% endif %}
 
                 </div>
 
 
-                <small>
-                    Weight: 40%
-                </small>
-
             </div>
 
 
-
-            <!-- IMAGE QUALITY -->
-
-            <div class="signal-card">
-
-                <div class="signal-top">
-
-                    <span>
-                        🖼️ Image Quality
-                    </span>
-
-                    <strong>
-                        {{ image_quality_score }}%
-                    </strong>
-
-                </div>
-
-
-                <div class="signal-bar">
-
-                    <div class="signal-fill"
-                         style="width: {{ image_quality_score }}%;">
-                    </div>
-
-                </div>
-
-
-                <small>
-                    Weight: 20%
-                </small>
-
-            </div>
-
-
-        </div>
-
-
-
-        <!-- OVERALL -->
-
-        <div class="overall-score-box">
-
-
-            <div>
-
-                <span>
-                    OVERALL RISK SCORE
-                </span>
+            <div class="ml-explanation">
 
                 <strong>
-                    {{ overall_score }}%
+                    🧠 Model Assessment
                 </strong>
 
-            </div>
-
-
-
-            <div>
-
-
-                {% if overall_score >= 90 %}
-
-                    <div class="overall-result low">
-                        ✓ LOW RISK
-                    </div>
-
-
-                {% elif overall_score >= 70 %}
-
-                    <div class="overall-result medium">
-                        ! NEEDS REVIEW
-                    </div>
-
-
-                {% else %}
-
-                    <div class="overall-result high">
-                        ! SUSPICIOUS
-                    </div>
-
-                {% endif %}
-
-
-            </div>
-
-
-        </div>
-
-
-    </section>
-
-
-
-    <!-- =================================================
-         AUTHENTICITY ANALYSIS
-    ================================================== -->
-
-    <section class="result-card">
-
-
-        <div class="card-heading">
-
-            <div class="card-icon">
-                🛡️
-            </div>
-
-            <div>
-
-                <h3>
-                    Authenticity Analysis
-                </h3>
-
                 <p>
-                    Visual comparison with reference documents
+                    {{ ml_result.explanation }}
                 </p>
 
             </div>
 
-        </div>
 
+            <p class="ml-note">
+
+                <strong>Note:</strong>
+
+                The ML result is a prototype anomaly assessment
+                based on visual patterns learned from the available
+                reference documents. It does not by itself prove
+                that a document is genuine or fraudulent.
+
+            </p>
+
+
+        {% else %}
+
+
+            <div class="ml-unavailable">
+
+                <span>
+                    ⚠️
+                </span>
+
+                <div>
+
+                    <strong>
+                        ML analysis unavailable
+                    </strong>
+
+                    <p>
+
+                        {% if ml_result %}
+
+                            {{ ml_result.explanation }}
+
+                        {% else %}
+
+                            ML analysis could not be performed.
+
+                        {% endif %}
+
+                    </p>
+
+                </div>
+
+            </div>
+
+
+        {% endif %}
+
+    </div>
+
+
+
+    <!-- ========================= -->
+    <!-- REFERENCE COMPARISON -->
+    <!-- ========================= -->
+
+    <div class="card">
+
+        <div class="card-title">
+            📑 Reference Document Comparison
+        </div>
 
 
         {% if authenticity_info %}
 
 
-            <div class="authenticity-result">
+            <div class="reference-box">
 
 
-                <div class="auth-row">
+                <div class="reference-row">
 
-                    <span>
+                    <span class="reference-label">
                         Best Matching Reference
                     </span>
 
-                    <strong>
+                    <span class="reference-value">
                         {{ authenticity_info.filename }}
-                    </strong>
-
-                </div>
-
-
-
-                <div class="auth-row">
-
-                    <span>
-                        Reference Comparison
                     </span>
 
-                    <strong>
-                        {{ authenticity_info.status }}
-                    </strong>
-
                 </div>
 
 
+                <div class="reference-row">
 
-                <div class="auth-row">
-
-                    <span>
+                    <span class="reference-label">
                         Visual Similarity
                     </span>
 
-                    <strong>
+                    <span class="reference-value">
                         {{ authenticity_info.similarity }}%
-                    </strong>
+                    </span>
 
                 </div>
 
 
+                <div class="reference-row">
 
-                {% if authenticity_info.similarity >= 90 %}
+                    <span class="reference-label">
+                        Comparison Status
+                    </span>
 
-                    <div class="auth-message success-message">
-                        🟢 High visual similarity with the reference document.
-                    </div>
+                    <span class="reference-value">
+                        {{ authenticity_info.status }}
+                    </span>
 
-
-                {% elif authenticity_info.similarity >= 70 %}
-
-                    <div class="auth-message warning-message">
-                        🟡 Moderate visual similarity. Further review may be required.
-                    </div>
-
-
-                {% else %}
-
-                    <div class="auth-message danger-message">
-                        🔴 Low visual similarity with the available reference.
-                    </div>
-
-                {% endif %}
+                </div>
 
 
             </div>
@@ -833,67 +1065,86 @@
 
             <div class="no-reference">
 
-                ⚠️
-
-                <p>
-                    No reference documents are available for comparison.
-                </p>
-
-                <span>
-                    Add genuine reference documents to enable visual comparison.
-                </span>
+                No reference document was available for comparison.
 
             </div>
 
 
         {% endif %}
 
-
-    </section>
-
+    </div>
 
 
-    <!-- =================================================
-         DOCUMENT IMAGE ANALYSIS
-    ================================================== -->
 
-    <section class="result-card">
+    <!-- ========================= -->
+    <!-- WHY THIS RESULT -->
+    <!-- ========================= -->
+
+    <div class="card">
+
+        <div class="card-title">
+            🧠 Why This Result?
+        </div>
 
 
-        <div class="card-heading">
+        {% if risk_explanation %}
 
-            <div class="card-icon">
-                🖼️
-            </div>
 
-            <div>
+            <div class="summary-box">
 
-                <h3>
-                    Document Image Analysis
-                </h3>
+                <strong>
+                    Summary
+                </strong>
 
                 <p>
-                    Quality and resolution analysis
+                    {{ risk_explanation.summary }}
                 </p>
 
             </div>
 
+
+            {% if risk_explanation.reasons %}
+
+                <ul class="reason-list">
+
+                    {% for reason in risk_explanation.reasons %}
+
+                        <li>
+                            {{ reason }}
+                        </li>
+
+                    {% endfor %}
+
+                </ul>
+
+            {% endif %}
+
+
+        {% endif %}
+
+    </div>
+
+
+
+    <!-- ========================= -->
+    <!-- IMAGE ANALYSIS -->
+    <!-- ========================= -->
+
+    <div class="card">
+
+        <div class="card-title">
+            🖼️ Image Analysis
         </div>
 
 
+        <div class="image-grid">
 
-        <div class="image-analysis-grid">
 
+            <div class="image-box">
 
-            <div class="analysis-item">
-
-                <span>
-                    ✨
-                </span>
-
-                <small>
+                <h4>
                     Image Quality
-                </small>
+                </h4>
 
                 <strong>
                     {{ image_info.image_quality }}
@@ -902,16 +1153,11 @@
             </div>
 
 
+            <div class="image-box">
 
-            <div class="analysis-item">
-
-                <span>
-                    🔬
-                </span>
-
-                <small>
-                    Sharpness Score
-                </small>
+                <h4>
+                    Sharpness / Blur Score
+                </h4>
 
                 <strong>
                     {{ image_info.blur_score }}
@@ -920,21 +1166,18 @@
             </div>
 
 
+            <div class="image-box">
 
-            <div class="analysis-item">
-
-                <span>
-                    📐
-                </span>
-
-                <small>
+                <h4>
                     Resolution
-                </small>
+                </h4>
 
                 <strong>
+
                     {{ image_info.width }}
                     ×
                     {{ image_info.height }}
+
                 </strong>
 
             </div>
@@ -942,159 +1185,129 @@
 
         </div>
 
-
-    </section>
-
+    </div>
 
 
-    <!-- =================================================
-         UPLOADED DOCUMENT
-    ================================================== -->
 
-    <section class="result-card uploaded-card">
+    <!-- ========================= -->
+    <!-- FILE INFORMATION -->
+    <!-- ========================= -->
 
+    <div class="card">
 
-        <div class="uploaded-icon">
-            📄
+        <div class="card-title">
+            📁 Uploaded Document
         </div>
 
 
-        <div>
+        <div class="file-box">
 
-            <span>
-                Uploaded Document
-            </span>
-
-            <strong>
+            <div class="file-name">
                 {{ filename }}
-            </strong>
-
-        </div>
-
-
-    </section>
-
-
-
-    <!-- =================================================
-         OCR TEXT
-    ================================================== -->
-
-    <section class="result-card ocr-card">
-
-
-        <div class="card-heading">
-
-            <div class="card-icon">
-                🔤
-            </div>
-
-            <div>
-
-                <h3>
-                    Extracted OCR Text
-                </h3>
-
-                <p>
-                    Raw text detected from the document
-                </p>
-
             </div>
 
         </div>
-
-
-
-        <details>
-
-            <summary>
-                View extracted text
-            </summary>
-
-
-            <pre>{{ text }}</pre>
-
-
-        </details>
-
-
-    </section>
-
-
-
-    <!-- =================================================
-         BUTTONS
-    ================================================== -->
-
-    <div class="action-buttons">
-
-
-        <a href="/upload"
-           class="action-button primary">
-
-            📄
-            Analyze Another Document
-
-        </a>
-
-
-
-        <a href="/"
-           class="action-button secondary">
-
-            🏠
-            Back to Home
-
-        </a>
-
 
     </div>
 
 
 
-    <!-- =================================================
-         IMPORTANT NOTE
-    ================================================== -->
+    <!-- ========================= -->
+    <!-- OCR TEXT -->
+    <!-- ========================= -->
 
-    <section class="important-note">
+    <div class="card">
 
-
-        <div class="note-icon">
-            ⚠️
+        <div class="card-title">
+            🔤 OCR Extracted Text
         </div>
 
 
-        <div>
+        <details>
 
-            <h3>
-                Important Note
-            </h3>
+            <summary>
+                Click to view extracted text
+            </summary>
 
-            <p>
 
-                This system provides a prototype-based authenticity
-                risk analysis using OCR, document checks, image quality
-                analysis, and visual comparison with reference documents.
+            <div class="ocr-text">
 
-            </p>
+                {{ text }}
 
-            <p>
+            </div>
 
-                A <strong>LOW RISK</strong> result does not guarantee
-                that a document is genuine, while a
-                <strong>SUSPICIOUS</strong> result does not by itself
-                prove that a document is fraudulent. Further manual
-                verification may be required.
+        </details>
 
-            </p>
+    </div>
+
+
+
+    <!-- ========================= -->
+    <!-- DISCLAIMER -->
+    <!-- ========================= -->
+
+    <div class="card">
+
+        <div class="disclaimer">
+
+            <strong>
+                ⚠️ Prototype Disclaimer
+            </strong>
+
+            <br><br>
+
+            This system is an academic prototype designed to
+            demonstrate automated document verification using OCR,
+            image analysis, reference comparison and machine-learning
+            based anomaly detection.
+
+            <br><br>
+
+            The results are indicators for review and should not be
+            treated as definitive proof that an academic document is
+            genuine, fraudulent, or officially verified.
+
+            <br><br>
+
+            Final verification should be performed against the
+            issuing institution's official records.
 
         </div>
 
+    </div>
 
-    </section>
+
+
+    <!-- ========================= -->
+    <!-- BUTTONS -->
+    <!-- ========================= -->
+
+    <div class="button-container">
+
+        <a href="/upload" class="btn btn-primary">
+            🔄 Analyze Another Document
+        </a>
+
+        <a href="/" class="btn btn-secondary">
+            🏠 Back to Home
+        </a>
+
+    </div>
 
 
 </main>
+
+
+
+<!-- ========================= -->
+<!-- FOOTER -->
+<!-- ========================= -->
+
+<footer class="footer">
+
+    Authenticity Validator • Academic Project Prototype
+
+</footer>
 
 
 </body>
