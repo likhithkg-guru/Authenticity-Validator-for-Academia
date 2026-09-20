@@ -3,12 +3,15 @@ import cv2
 import fitz
 import numpy as np
 
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import StandardScaler
 
-def pdf_to_feature_vector(pdf_path):
-    """
-    Convert the first page of a PDF into a numerical
-    feature vector using image characteristics.
-    """
+
+# --------------------------------------------------
+# Convert PDF first page to grayscale image
+# --------------------------------------------------
+
+def pdf_to_image(pdf_path):
 
     try:
         document = fitz.open(pdf_path)
@@ -19,203 +22,347 @@ def pdf_to_feature_vector(pdf_path):
 
         page = document[0]
 
-        pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5))
+        pix = page.get_pixmap(
+            matrix=fitz.Matrix(1.5, 1.5),
+            colorspace=fitz.csGRAY
+        )
 
         image = np.frombuffer(
             pix.samples,
             dtype=np.uint8
         )
 
-        channels = pix.n
-
         image = image.reshape(
             pix.height,
-            pix.width,
-            channels
+            pix.width
         )
-
-        if channels == 4:
-            image = cv2.cvtColor(
-                image,
-                cv2.COLOR_RGBA2GRAY
-            )
-        else:
-            image = cv2.cvtColor(
-                image,
-                cv2.COLOR_RGB2GRAY
-            )
 
         document.close()
 
-        # Standard size
-        image = cv2.resize(
-            image,
-            (64, 64)
-        )
-
-        # Normalize
-        image = image.astype(np.float32) / 255.0
-
-        return image.flatten()
+        return image
 
     except Exception as e:
 
-        print("Feature extraction error:", e)
+        print("PDF image error:", e)
 
         return None
 
 
+# --------------------------------------------------
+# Extract document features
+# --------------------------------------------------
+
+def extract_features(pdf_path):
+
+    image = pdf_to_image(pdf_path)
+
+    if image is None:
+        return None
+
+    image = cv2.resize(
+        image,
+        (800, 1100)
+    )
+
+    normalized = image.astype(
+        np.float32
+    ) / 255.0
+
+    # 1. Brightness
+    brightness = np.mean(normalized)
+
+    # 2. Contrast
+    contrast = np.std(normalized)
+
+    # 3. Blur / sharpness
+    blur_score = cv2.Laplacian(
+        image,
+        cv2.CV_64F
+    ).var()
+
+    blur_score = min(
+        blur_score / 1000,
+        1.0
+    )
+
+    # 4. Edge density
+    edges = cv2.Canny(
+        image,
+        100,
+        200
+    )
+
+    edge_density = np.mean(
+        edges > 0
+    )
+
+    # 5. Dark pixel ratio
+    dark_pixels = np.mean(
+        normalized < 0.5
+    )
+
+    # 6. White-space ratio
+    white_space = np.mean(
+        normalized > 0.9
+    )
+
+    # 7. Aspect ratio
+    height, width = image.shape
+
+    aspect_ratio = width / height
+
+    # 8. Horizontal structure
+    horizontal_projection = np.mean(
+        normalized,
+        axis=1
+    )
+
+    horizontal_variation = np.std(
+        horizontal_projection
+    )
+
+    # 9. Vertical structure
+    vertical_projection = np.mean(
+        normalized,
+        axis=0
+    )
+
+    vertical_variation = np.std(
+        vertical_projection
+    )
+
+    # 10. Center brightness
+    center = normalized[
+        height // 4:3 * height // 4,
+        width // 4:3 * width // 4
+    ]
+
+    center_brightness = np.mean(
+        center
+    )
+
+    features = np.array([
+        brightness,
+        contrast,
+        blur_score,
+        edge_density,
+        dark_pixels,
+        white_space,
+        aspect_ratio,
+        horizontal_variation,
+        vertical_variation,
+        center_brightness
+    ])
+
+    return features
+
+
+# --------------------------------------------------
+# Load reference documents
+# --------------------------------------------------
+
 def load_reference_features(reference_folder):
 
     features = []
+    filenames = []
 
-    if not os.path.exists(reference_folder):
-        return features
+    if not os.path.exists(
+        reference_folder
+    ):
+        return np.array([]), []
 
-    files = [
+    reference_files = [
         file
-        for file in os.listdir(reference_folder)
+        for file in os.listdir(
+            reference_folder
+        )
         if file.lower().endswith(".pdf")
     ]
 
-    for filename in files:
+    for filename in reference_files:
 
         filepath = os.path.join(
             reference_folder,
             filename
         )
 
-        feature = pdf_to_feature_vector(filepath)
+        feature_vector = extract_features(
+            filepath
+        )
 
-        if feature is not None:
-            features.append(feature)
+        if feature_vector is not None:
 
-    return features
-
-
-def calculate_anomaly_score(
-    uploaded_feature,
-    reference_features
-):
-    """
-    Calculate how different the uploaded document is
-    from the reference document patterns.
-
-    This uses normalized image distance.
-    """
-
-    distances = []
-
-    for reference in reference_features:
-
-        distance = np.mean(
-            np.abs(
-                uploaded_feature - reference
+            features.append(
+                feature_vector
             )
-        )
 
-        distances.append(distance)
+            filenames.append(
+                filename
+            )
 
-    if not distances:
-        return None
+    if not features:
 
-    # Use the closest reference pattern
-    minimum_distance = min(distances)
+        return np.array([]), []
 
-    # Convert distance to similarity-style score
-    score = 100 - (
-        minimum_distance * 100
-    )
+    return np.array(features), filenames
 
-    score = max(
-        0,
-        min(
-            100,
-            round(score, 2)
-        )
-    )
 
-    return score
-
+# --------------------------------------------------
+# Isolation Forest analysis
+# --------------------------------------------------
 
 def analyze_with_ml(
     uploaded_path,
     reference_folder
 ):
-    """
-    Prototype ML-style anomaly analysis.
-    """
 
-    reference_features = load_reference_features(
-        reference_folder
+    # Load reference features
+    reference_features, filenames = (
+        load_reference_features(
+            reference_folder
+        )
     )
 
-    # Need reference documents
+    # Need at least 3 references
     if len(reference_features) < 3:
 
         return {
             "available": False,
             "status": "NOT AVAILABLE",
             "anomaly_score": None,
+            "prediction": None,
+            "reference_count": len(
+                reference_features
+            ),
             "explanation": (
-                "At least 3 valid reference documents "
-                "are required for anomaly analysis."
+                "At least 3 reference documents "
+                "are required for Isolation Forest analysis."
             )
         }
 
-    uploaded_feature = pdf_to_feature_vector(
+    # Extract uploaded document features
+    uploaded_features = extract_features(
         uploaded_path
     )
 
-    if uploaded_feature is None:
+    if uploaded_features is None:
 
         return {
             "available": False,
             "status": "ERROR",
             "anomaly_score": None,
+            "prediction": None,
+            "reference_count": len(
+                reference_features
+            ),
             "explanation": (
-                "Unable to extract document features."
+                "Unable to extract features "
+                "from the uploaded document."
             )
         }
 
-    similarity_score = calculate_anomaly_score(
-        uploaded_feature,
+    # --------------------------------------------------
+    # Scale features
+    # --------------------------------------------------
+
+    scaler = StandardScaler()
+
+    X_scaled = scaler.fit_transform(
         reference_features
     )
 
-    if similarity_score is None:
+    uploaded_scaled = scaler.transform(
+        uploaded_features.reshape(1, -1)
+    )
 
-        return {
-            "available": False,
-            "status": "ERROR",
-            "anomaly_score": None,
-            "explanation": (
-                "Unable to calculate document anomaly."
+    # --------------------------------------------------
+    # Create Isolation Forest
+    # --------------------------------------------------
+
+    model = IsolationForest(
+        n_estimators=200,
+        contamination="auto",
+        random_state=42
+    )
+
+    # Train using reference documents
+    model.fit(
+        X_scaled
+    )
+
+    # --------------------------------------------------
+    # Predict uploaded document
+    # --------------------------------------------------
+
+    prediction = model.predict(
+        uploaded_scaled
+    )[0]
+
+    # 1  = normal
+    # -1 = anomaly
+
+    # --------------------------------------------------
+    # Calculate normalized anomaly score
+    # --------------------------------------------------
+
+    reference_scores = model.score_samples(
+        X_scaled
+    )
+
+    uploaded_score = model.score_samples(
+        uploaded_scaled
+    )[0]
+
+    minimum_score = np.min(
+        reference_scores
+    )
+
+    maximum_score = np.max(
+        reference_scores
+    )
+
+    if maximum_score == minimum_score:
+
+        anomaly_score = 0
+
+    else:
+
+        anomaly_score = (
+            (
+                maximum_score
+                - uploaded_score
             )
-        }
+            /
+            (
+                maximum_score
+                - minimum_score
+            )
+        ) * 100
 
-    # Convert similarity into anomaly score
+    anomaly_score = max(
+        0,
+        min(
+            100,
+            anomaly_score
+        )
+    )
+
     anomaly_score = round(
-        100 - similarity_score,
+        anomaly_score,
         2
     )
 
-    if anomaly_score <= 25:
+    # --------------------------------------------------
+    # Classification
+    # --------------------------------------------------
+
+    if prediction == 1:
 
         status = "NORMAL PATTERN"
 
         explanation = (
-            "The document follows visual patterns "
-            "similar to the available reference documents."
-        )
-
-    elif anomaly_score <= 50:
-
-        status = "MODERATE ANOMALY"
-
-        explanation = (
-            "The document shows some visual differences "
-            "from the available reference documents."
+            "The document follows a feature pattern "
+            "consistent with the reference dataset."
         )
 
     else:
@@ -223,13 +370,30 @@ def analyze_with_ml(
         status = "ANOMALOUS PATTERN"
 
         explanation = (
-            "The document differs noticeably from "
-            "the visual patterns in the reference set."
+            "The document shows feature patterns "
+            "that differ from the reference dataset "
+            "and should be reviewed."
         )
 
+    # --------------------------------------------------
+    # Return result
+    # --------------------------------------------------
+
     return {
+
         "available": True,
+
         "status": status,
+
         "anomaly_score": anomaly_score,
+
+        "prediction": int(
+            prediction
+        ),
+
+        "reference_count": len(
+            reference_features
+        ),
+
         "explanation": explanation
     }
