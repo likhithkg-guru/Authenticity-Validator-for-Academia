@@ -2414,3 +2414,57 @@ body {
         text-align: center;
     }
 }
+/* ============================= */
+/* ML ANOMALY ANALYSIS */
+/* ============================= */
+
+.ml-score {
+    text-align: center;
+    margin: 25px 0;
+}
+
+.score-number {
+    font-size: 48px;
+    font-weight: 700;
+}
+
+.score-label {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.ml-status {
+    padding: 15px;
+    border-radius: 10px;
+    margin: 15px 0;
+    font-weight: 600;
+}
+
+.ml-details {
+    margin-top: 15px;
+}
+
+.ml-details p {
+    margin: 8px 0;
+}
+
+.ml-explanation {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.ml-explanation h3 {
+    margin-top: 0;
+}
+
+.ml-note {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+.ml-note p {
+    margin-bottom: 0;
+}
