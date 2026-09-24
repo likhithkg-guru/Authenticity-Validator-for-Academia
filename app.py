@@ -1,4 +1,10 @@
-from flask import Flask, render_template, request
+from flask import (
+    Flask,
+    render_template,
+    request,
+    send_from_directory
+)
+
 import os
 
 from utils.ocr import extract_text_from_pdf
@@ -16,6 +22,7 @@ from utils.ml_detector import analyze_with_ml
 
 app = Flask(__name__)
 
+
 # =========================================================
 # FOLDERS
 # =========================================================
@@ -25,14 +32,13 @@ REFERENCE_FOLDER = "reference_documents"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Create required folders
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(REFERENCE_FOLDER, exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
 
 
 # =========================================================
-# HOME PAGE
+# HOME
 # =========================================================
 
 @app.route("/")
@@ -50,6 +56,30 @@ def upload():
 
 
 # =========================================================
+# SERVE UPLOADED DOCUMENT
+# =========================================================
+
+@app.route("/uploaded/<filename>")
+def uploaded_file(filename):
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        filename
+    )
+
+
+# =========================================================
+# SERVE REFERENCE DOCUMENT
+# =========================================================
+
+@app.route("/reference/<filename>")
+def reference_file(filename):
+    return send_from_directory(
+        REFERENCE_FOLDER,
+        filename
+    )
+
+
+# =========================================================
 # ANALYZE DOCUMENT
 # =========================================================
 
@@ -57,7 +87,7 @@ def upload():
 def analyze():
 
     # -----------------------------------------------------
-    # 1. Check whether file was uploaded
+    # 1. Check upload
     # -----------------------------------------------------
 
     if "document" not in request.files:
@@ -70,7 +100,7 @@ def analyze():
 
 
     # -----------------------------------------------------
-    # 2. Save uploaded document
+    # 2. Save document
     # -----------------------------------------------------
 
     filepath = os.path.join(
@@ -82,38 +112,40 @@ def analyze():
 
 
     # -----------------------------------------------------
-    # 3. OCR TEXT EXTRACTION
+    # 3. OCR
     # -----------------------------------------------------
 
     text = extract_text_from_pdf(filepath)
 
 
     # -----------------------------------------------------
-    # 4. EXTRACT IMPORTANT DETAILS
+    # 4. Extract details
     # -----------------------------------------------------
 
     details = extract_details(text)
 
 
     # -----------------------------------------------------
-    # 5. BASIC DOCUMENT VERIFICATION
+    # 5. Verification
     # -----------------------------------------------------
 
-    checks, verification_score, verification_status = verify_document(
-        details,
-        text
+    checks, verification_score, verification_status = (
+        verify_document(
+            details,
+            text
+        )
     )
 
 
     # -----------------------------------------------------
-    # 6. IMAGE QUALITY ANALYSIS
+    # 6. Image quality
     # -----------------------------------------------------
 
     image_info = analyze_image(filepath)
 
 
     # -----------------------------------------------------
-    # 7. REFERENCE DOCUMENT COMPARISON
+    # 7. Reference comparison
     # -----------------------------------------------------
 
     authenticity_info = find_best_reference(
@@ -124,13 +156,14 @@ def analyze():
     similarity_score = None
 
     if authenticity_info:
+
         similarity_score = authenticity_info.get(
             "similarity"
         )
 
 
     # -----------------------------------------------------
-    # 8. MACHINE LEARNING ANALYSIS
+    # 8. Machine learning
     # -----------------------------------------------------
 
     ml_result = analyze_with_ml(
@@ -140,10 +173,11 @@ def analyze():
 
 
     # -----------------------------------------------------
-    # 9. OVERALL RISK SCORE
+    # 9. Overall risk
     # -----------------------------------------------------
 
     risk_result = calculate_risk_score(
+
         verification_score=verification_score,
 
         similarity_score=similarity_score,
@@ -160,10 +194,11 @@ def analyze():
 
 
     # -----------------------------------------------------
-    # 10. RISK EXPLANATION
+    # 10. Risk explanation
     # -----------------------------------------------------
 
     risk_explanation = generate_risk_explanation(
+
         verification_score=verification_score,
 
         similarity_score=similarity_score,
@@ -182,33 +217,23 @@ def analyze():
 
 
     # =====================================================
-    # 11. SCORE BREAKDOWN
+    # SCORE BREAKDOWN
     # =====================================================
 
-    # OCR verification component
     verification_component = verification_score
 
 
-    # Visual similarity component
     if similarity_score is not None:
         similarity_component = similarity_score
     else:
         similarity_component = 0
 
 
-    # ML component
-    #
-    # ML anomaly score:
-    # 0   = very little deviation
-    # 100 = high deviation
-    #
-    # Therefore we convert it into a positive
-    # consistency score.
-    
     if ml_result.get("anomaly_score") is not None:
 
         ml_component = (
-            100 - ml_result.get("anomaly_score")
+            100 -
+            ml_result.get("anomaly_score")
         )
 
     else:
@@ -216,7 +241,6 @@ def analyze():
         ml_component = 0
 
 
-    # Make sure ML component stays between 0 and 100
     ml_component = max(
         0,
         min(
@@ -226,94 +250,88 @@ def analyze():
     )
 
 
-    # Image quality component
-    quality_component = risk_result["quality_score"]
+    quality_component = risk_result[
+        "quality_score"
+    ]
 
 
     # =====================================================
-    # 12. SEND EVERYTHING TO RESULT PAGE
+    # REFERENCE URL
+    # =====================================================
+
+    reference_filename = None
+    reference_url = None
+
+    if authenticity_info:
+
+        reference_filename = authenticity_info.get(
+            "filename"
+        )
+
+        if reference_filename:
+
+            reference_url = (
+                "/reference/" +
+                reference_filename
+            )
+
+
+    # =====================================================
+    # UPLOADED DOCUMENT URL
+    # =====================================================
+
+    uploaded_url = (
+        "/uploaded/" +
+        file.filename
+    )
+
+
+    # =====================================================
+    # RESULT PAGE
     # =====================================================
 
     return render_template(
 
         "result.html",
 
-        # -------------------------------------------------
-        # Basic information
-        # -------------------------------------------------
-
+        # Basic
         filename=file.filename,
+        uploaded_url=uploaded_url,
 
+        # OCR
         text=text,
 
-
-        # -------------------------------------------------
-        # Extracted information
-        # -------------------------------------------------
-
+        # Extracted details
         details=details,
 
-
-        # -------------------------------------------------
         # Verification
-        # -------------------------------------------------
-
         checks=checks,
-
         score=verification_score,
-
         verification_status=verification_status,
 
-
-        # -------------------------------------------------
-        # Overall risk
-        # -------------------------------------------------
-
+        # Overall
         status=risk_result["status"],
-
         overall_score=risk_result["overall_score"],
-
         quality_score=risk_result["quality_score"],
 
-
-        # -------------------------------------------------
-        # Image analysis
-        # -------------------------------------------------
-
-        image_info=image_info,
-
-
-        # -------------------------------------------------
-        # Reference comparison
-        # -------------------------------------------------
-
-        authenticity_info=authenticity_info,
-
-
-        # -------------------------------------------------
-        # ML analysis
-        # -------------------------------------------------
-
-        ml_result=ml_result,
-
-
-        # -------------------------------------------------
-        # Score breakdown
-        # -------------------------------------------------
-
+        # Score components
         verification_component=verification_component,
-
         similarity_component=similarity_component,
-
         ml_component=ml_component,
-
         quality_component=quality_component,
 
+        # Image
+        image_info=image_info,
 
-        # -------------------------------------------------
+        # Reference
+        authenticity_info=authenticity_info,
+        reference_filename=reference_filename,
+        reference_url=reference_url,
+
+        # ML
+        ml_result=ml_result,
+
         # Explanation
-        # -------------------------------------------------
-
         risk_explanation=risk_explanation
     )
 

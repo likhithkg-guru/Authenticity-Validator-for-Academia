@@ -2468,3 +2468,107 @@ body {
 .ml-note p {
     margin-bottom: 0;
 }
+/* =====================================================
+   VISUAL DOCUMENT COMPARISON
+===================================================== */
+
+.comparison-intro {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    color: #64748b;
+    line-height: 1.6;
+}
+
+
+.comparison-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+
+.document-card {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 15px;
+}
+
+
+.document-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e3a8a;
+    margin-bottom: 6px;
+}
+
+
+.document-name {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 12px;
+    word-break: break-word;
+}
+
+
+.document-preview {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: white;
+}
+
+
+.similarity-result {
+    margin-top: 25px;
+    text-align: center;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 12px;
+    padding: 25px;
+}
+
+
+.similarity-number {
+    font-size: 42px;
+    font-weight: bold;
+    color: #1d4ed8;
+}
+
+
+.similarity-label {
+    color: #64748b;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+
+.similarity-status {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+
+    .comparison-container {
+        grid-template-columns: 1fr;
+    }
+
+    .document-preview {
+        height: 450px;
+    }
+
+}
