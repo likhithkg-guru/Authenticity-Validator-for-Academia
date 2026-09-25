@@ -2572,3 +2572,101 @@ body {
     }
 
 }
+/* =====================================================
+   SCORE BREAKDOWN METRICS
+===================================================== */
+
+.score-explanation {
+
+    background: #f8fafc;
+
+    border: 1px solid #e5e7eb;
+
+    border-radius: 10px;
+
+    padding: 15px;
+
+    margin-bottom: 25px;
+
+    color: #64748b;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+}
+
+
+.metric-row {
+
+    margin-bottom: 24px;
+}
+
+
+.metric-row:last-child {
+
+    margin-bottom: 0;
+}
+
+
+.metric-header {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 9px;
+
+    color: #1e293b;
+}
+
+
+.metric-header strong {
+
+    font-size: 15px;
+}
+
+
+.metric-weight {
+
+    display: inline-block;
+
+    margin-left: 8px;
+
+    font-size: 11px;
+
+    color: #64748b;
+
+    background: #f1f5f9;
+
+    padding: 4px 8px;
+
+    border-radius: 12px;
+}
+
+
+.progress-bar {
+
+    width: 100%;
+
+    height: 12px;
+
+    background: #e2e8f0;
+
+    border-radius: 20px;
+
+    overflow: hidden;
+}
+
+
+.progress-fill {
+
+    height: 100%;
+
+    background: #2563eb;
+
+    border-radius: 20px;
+
+    transition: width 0.8s ease;
+}

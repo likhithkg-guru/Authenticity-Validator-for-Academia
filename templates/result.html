@@ -2,1606 +2,1251 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
-    <title>
-        Verification Result | Academic Authenticity Validator
-    </title>
-
+    <title>Verification Result | Authenticity Validator</title>
 
     <style>
-
-        /* =====================================================
-           RESET
-        ===================================================== */
-
         * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
         }
-
 
         body {
-
-            font-family:
-                Arial,
-                Helvetica,
-                sans-serif;
-
-            background: #f4f7fb;
-
-            color: #1f2937;
-
-            min-height: 100vh;
-        }
-
-
-        /* =====================================================
-           HEADER
-        ===================================================== */
-
-        header {
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #0f172a,
-                    #1e3a8a
-                );
-
-            color: white;
-
-            padding: 22px 40px;
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            box-shadow:
-                0 4px 15px rgba(0,0,0,0.15);
-        }
-
-
-        .logo {
-
-            font-size: 23px;
-
-            font-weight: bold;
-        }
-
-
-        .subtitle {
-
-            font-size: 13px;
-
-            opacity: 0.8;
-
-            margin-top: 5px;
-        }
-
-
-        .back-btn {
-
-            text-decoration: none;
-
-            color: white;
-
-            padding: 10px 18px;
-
-            border:
-                1px solid
-                rgba(255,255,255,0.35);
-
-            border-radius: 8px;
-
-            font-size: 14px;
-
-            transition: 0.2s;
-        }
-
-
-        .back-btn:hover {
-
-            background:
-                rgba(255,255,255,0.12);
-        }
-
-
-        /* =====================================================
-           MAIN CONTAINER
-        ===================================================== */
-
-        .container {
-
-            width: 92%;
-
-            max-width: 1200px;
-
-            margin: 35px auto;
-        }
-
-
-        /* =====================================================
-           PAGE TITLE
-        ===================================================== */
-
-        .page-title {
-
-            margin-bottom: 25px;
-        }
-
-
-        .page-title h1 {
-
-            font-size: 30px;
-
-            color: #111827;
-        }
-
-
-        .page-title p {
-
-            margin-top: 7px;
-
-            color: #6b7280;
-        }
-
-
-        /* =====================================================
-           OVERALL SCORE
-        ===================================================== */
-
-        .overall-card {
-
-            background: white;
-
-            border-radius: 16px;
-
-            padding: 30px;
-
-            box-shadow:
-                0 8px 25px
-                rgba(15,23,42,0.08);
-
-            margin-bottom: 25px;
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            gap: 30px;
-        }
-
-
-        .overall-left h2 {
-
-            font-size: 21px;
-
-            margin-bottom: 10px;
-        }
-
-
-        .overall-left p {
-
-            color: #6b7280;
-
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
             line-height: 1.6;
         }
 
+        /* ================= HEADER ================= */
 
-        .score-circle {
-
-            width: 150px;
-
-            height: 150px;
-
-            border-radius: 50%;
-
+        .header {
+            background: #0f172a;
+            color: white;
+            padding: 20px 40px;
             display: flex;
-
-            flex-direction: column;
-
+            justify-content: space-between;
             align-items: center;
-
-            justify-content: center;
-
-            background: #eef2ff;
-
-            border:
-                10px solid
-                #dbeafe;
-
-            flex-shrink: 0;
         }
 
-
-        .score-number {
-
-            font-size: 34px;
-
+        .logo {
+            font-size: 23px;
             font-weight: bold;
-
-            color: #1d4ed8;
         }
 
-
-        .score-label {
-
-            font-size: 12px;
-
-            color: #6b7280;
-
-            margin-top: 3px;
+        .logo span {
+            color: #60a5fa;
         }
 
+        .header-text {
+            font-size: 13px;
+            color: #cbd5e1;
+        }
 
-        /* =====================================================
-           STATUS
-        ===================================================== */
+        /* ================= MAIN ================= */
+
+        .container {
+            max-width: 1150px;
+            margin: 35px auto;
+            padding: 0 20px;
+        }
+
+        /* ================= TITLE ================= */
+
+        .page-title {
+            margin-bottom: 25px;
+        }
+
+        .page-title h1 {
+            font-size: 30px;
+            color: #0f172a;
+            margin-bottom: 5px;
+        }
+
+        .page-title p {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        /* ================= OVERALL RESULT ================= */
+
+        .result-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(15, 23, 42, 0.08);
+        }
+
+        .result-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .overall-score {
+            font-size: 58px;
+            font-weight: bold;
+            color: #2563eb;
+            line-height: 1;
+        }
+
+        .score-percent {
+            font-size: 18px;
+            color: #64748b;
+        }
+
+        .status-box {
+            text-align: right;
+        }
 
         .status {
-
             display: inline-block;
-
-            padding: 8px 15px;
-
+            padding: 10px 18px;
             border-radius: 30px;
-
-            font-size: 13px;
-
+            font-size: 14px;
             font-weight: bold;
-
-            margin-top: 15px;
-
-            background: #e0f2fe;
-
-            color: #0369a1;
+            background: #fef3c7;
+            color: #92400e;
         }
 
+        .status-description {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #64748b;
+        }
 
-        /* =====================================================
-           SECTION
-        ===================================================== */
+        /* ================= SECTIONS ================= */
 
         .section {
-
             background: white;
-
             border-radius: 16px;
-
-            padding: 25px;
-
+            padding: 28px;
             margin-bottom: 25px;
-
-            box-shadow:
-                0 8px 25px
-                rgba(15,23,42,0.06);
+            box-shadow: 0 5px 20px rgba(15, 23, 42, 0.06);
         }
 
-
         .section-title {
-
-            font-size: 20px;
-
+            font-size: 21px;
+            font-weight: bold;
+            color: #0f172a;
             margin-bottom: 20px;
-
-            color: #111827;
-
-            border-bottom:
-                1px solid
-                #e5e7eb;
-
+            border-bottom: 1px solid #e2e8f0;
             padding-bottom: 12px;
         }
 
+        /* ================= SCORE BREAKDOWN ================= */
 
-        /* =====================================================
-           SCORE BREAKDOWN
-        ===================================================== */
-
-        .score-grid {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(4, 1fr);
-
-            gap: 15px;
-        }
-
-
-        .score-card {
-
+        .score-explanation {
             background: #f8fafc;
-
-            border:
-                1px solid
-                #e5e7eb;
-
-            border-radius: 12px;
-
-            padding: 20px;
-
-            text-align: center;
-
-            transition: 0.2s;
-        }
-
-
-        .score-card:hover {
-
-            transform:
-                translateY(-3px);
-
-            box-shadow:
-                0 8px 18px
-                rgba(0,0,0,0.08);
-        }
-
-
-        .score-card h3 {
-
-            font-size: 14px;
-
-            color: #64748b;
-
-            margin-bottom: 10px;
-        }
-
-
-        .component-score {
-
-            font-size: 28px;
-
-            font-weight: bold;
-
-            color: #1d4ed8;
-        }
-
-
-        .weight {
-
-            margin-top: 8px;
-
-            font-size: 12px;
-
-            color: #94a3b8;
-        }
-
-
-        /* =====================================================
-           GRID
-        ===================================================== */
-
-        .grid {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(2, 1fr);
-
-            gap: 20px;
-        }
-
-
-        /* =====================================================
-           INFO CARD
-        ===================================================== */
-
-        .info-card {
-
-            background: #f8fafc;
-
+            border: 1px solid #e5e7eb;
             border-radius: 10px;
-
             padding: 15px;
-
-            border:
-                1px solid
-                #e5e7eb;
-
-            margin-bottom: 10px;
-        }
-
-
-        .info-label {
-
-            font-size: 12px;
-
+            margin-bottom: 25px;
             color: #64748b;
-
-            margin-bottom: 5px;
-        }
-
-
-        .info-value {
-
-            font-size: 15px;
-
-            font-weight: 600;
-
-            color: #111827;
-        }
-
-
-        /* =====================================================
-           VERIFICATION CHECKS
-        ===================================================== */
-
-        .check-item {
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            padding: 13px 0;
-
-            border-bottom:
-                1px solid
-                #e5e7eb;
-        }
-
-
-        .check-item:last-child {
-
-            border-bottom: none;
-        }
-
-
-        .check-name {
-
             font-size: 14px;
-        }
-
-
-        .check-result {
-
-            font-size: 13px;
-
-            font-weight: bold;
-
-            padding: 5px 10px;
-
-            border-radius: 20px;
-        }
-
-
-        .passed {
-
-            background: #dcfce7;
-
-            color: #166534;
-        }
-
-
-        .failed {
-
-            background: #fee2e2;
-
-            color: #991b1b;
-        }
-
-
-        /* =====================================================
-           ML ANALYSIS
-        ===================================================== */
-
-        .ml-card {
-
-            background:
-                linear-gradient(
-                    135deg,
-                    #eff6ff,
-                    #eef2ff
-                );
-
-            border:
-                1px solid
-                #c7d2fe;
-
-            border-radius: 12px;
-
-            padding: 22px;
-        }
-
-
-        .ml-header {
-
-            display: flex;
-
-            justify-content: space-between;
-
-            align-items: center;
-
-            margin-bottom: 20px;
-        }
-
-
-        .ml-title {
-
-            font-size: 18px;
-
-            font-weight: bold;
-
-            color: #1e3a8a;
-        }
-
-
-        .ml-badge {
-
-            background: #dbeafe;
-
-            color: #1e40af;
-
-            padding: 7px 12px;
-
-            border-radius: 20px;
-
-            font-size: 12px;
-
-            font-weight: bold;
-        }
-
-
-        .ml-score {
-
-            font-size: 38px;
-
-            font-weight: bold;
-
-            color: #1d4ed8;
-
-            margin-bottom: 5px;
-        }
-
-
-        .ml-description {
-
-            color: #475569;
-
             line-height: 1.6;
-
-            font-size: 14px;
         }
 
-
-        .ml-grid {
-
-            display: grid;
-
-            grid-template-columns:
-                repeat(3, 1fr);
-
-            gap: 12px;
-
-            margin-top: 20px;
+        .metric-row {
+            margin-bottom: 24px;
         }
 
-
-        .ml-small-card {
-
-            background: white;
-
-            border-radius: 10px;
-
-            padding: 14px;
-
-            text-align: center;
-
-            border:
-                1px solid
-                #dbeafe;
+        .metric-row:last-child {
+            margin-bottom: 0;
         }
 
-
-        .ml-small-card span {
-
-            display: block;
-
-            font-size: 12px;
-
-            color: #64748b;
-
-            margin-bottom: 6px;
-        }
-
-
-        .ml-small-card strong {
-
-            font-size: 16px;
-
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 9px;
             color: #1e293b;
+            gap: 10px;
         }
 
+        .metric-header strong {
+            font-size: 15px;
+        }
 
-        /* =====================================================
-           VISUAL DOCUMENT COMPARISON
-        ===================================================== */
-
-        .comparison-intro {
-
-            background: #f8fafc;
-
-            border:
-                1px solid
-                #e5e7eb;
-
-            border-radius: 10px;
-
-            padding: 15px;
-
-            margin-bottom: 20px;
-
+        .metric-weight {
+            display: inline-block;
+            margin-left: 8px;
+            font-size: 11px;
             color: #64748b;
-
-            line-height: 1.6;
-        }
-
-
-        .comparison-container {
-
-            display: grid;
-
-            grid-template-columns:
-                1fr 1fr;
-
-            gap: 20px;
-        }
-
-
-        .document-card {
-
-            background: #f8fafc;
-
-            border:
-                1px solid
-                #e5e7eb;
-
+            background: #f1f5f9;
+            padding: 4px 8px;
             border-radius: 12px;
+        }
 
-            padding: 15px;
-
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: #e2e8f0;
+            border-radius: 20px;
             overflow: hidden;
         }
 
-
-        .document-title {
-
-            font-size: 16px;
-
-            font-weight: bold;
-
-            color: #1e3a8a;
-
-            margin-bottom: 6px;
+        .progress-fill {
+            height: 100%;
+            background: #2563eb;
+            border-radius: 20px;
+            transition: width 0.8s ease;
         }
 
+        /* ================= INFORMATION GRID ================= */
 
-        .document-name {
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
 
-            font-size: 13px;
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px;
+        }
 
+        .info-label {
+            font-size: 12px;
             color: #64748b;
+            margin-bottom: 5px;
+        }
 
-            margin-bottom: 12px;
-
+        .info-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f172a;
             word-break: break-word;
         }
 
+        /* ================= VERIFICATION CHECKS ================= */
 
-        .document-preview {
-
-            width: 100%;
-
-            height: 500px;
-
-            border:
-                1px solid
-                #cbd5e1;
-
-            border-radius: 8px;
-
-            background: white;
-
-            display: block;
-        }
-
-
-        .similarity-result {
-
-            margin-top: 25px;
-
-            text-align: center;
-
-            background: #eff6ff;
-
-            border:
-                1px solid
-                #bfdbfe;
-
-            border-radius: 12px;
-
-            padding: 25px;
-        }
-
-
-        .similarity-number {
-
-            font-size: 42px;
-
-            font-weight: bold;
-
-            color: #1d4ed8;
-        }
-
-
-        .similarity-label {
-
-            color: #64748b;
-
-            font-size: 13px;
-
-            margin-top: 5px;
-        }
-
-
-        .similarity-status {
-
-            display: inline-block;
-
-            margin-top: 12px;
-
-            padding: 7px 14px;
-
-            border-radius: 20px;
-
-            background: #dbeafe;
-
-            color: #1e40af;
-
-            font-size: 12px;
-
-            font-weight: bold;
-        }
-
-
-        /* =====================================================
-           REFERENCE BOX
-        ===================================================== */
-
-        .reference-box {
-
-            background: #f8fafc;
-
-            border:
-                1px solid
-                #e5e7eb;
-
-            border-radius: 12px;
-
-            padding: 20px;
-        }
-
-
-        .similarity {
-
-            font-size: 30px;
-
-            font-weight: bold;
-
-            color: #1d4ed8;
-
-            margin-bottom: 8px;
-        }
-
-
-        /* =====================================================
-           IMAGE QUALITY
-        ===================================================== */
-
-        .quality-grid {
-
+        .checks {
             display: grid;
-
-            grid-template-columns:
-                repeat(4, 1fr);
-
+            grid-template-columns: repeat(2, 1fr);
             gap: 15px;
         }
 
-
-        /* =====================================================
-           RISK EXPLANATION
-        ===================================================== */
-
-        .risk-summary {
-
+        .check-item {
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
             background: #f8fafc;
-
-            border-left:
-                5px solid
-                #2563eb;
-
-            padding: 18px;
-
-            border-radius: 8px;
-
-            margin-bottom: 15px;
-
-            line-height: 1.6;
-        }
-
-
-        .reason-list {
-
-            padding-left: 20px;
-
-            color: #475569;
-
-            line-height: 1.8;
-        }
-
-
-        /* =====================================================
-           OCR
-        ===================================================== */
-
-        details {
-
-            margin-top: 10px;
-        }
-
-
-        summary {
-
-            cursor: pointer;
-
-            font-weight: bold;
-
-            color: #1d4ed8;
-
-            padding: 12px 0;
-        }
-
-
-        .ocr-text {
-
-            background: #111827;
-
-            color: #e5e7eb;
-
-            padding: 20px;
-
-            border-radius: 10px;
-
-            white-space: pre-wrap;
-
-            font-family: monospace;
-
-            font-size: 13px;
-
-            max-height: 400px;
-
-            overflow-y: auto;
-
-            line-height: 1.6;
-        }
-
-
-        /* =====================================================
-           DISCLAIMER
-        ===================================================== */
-
-        .disclaimer {
-
-            background: #fff7ed;
-
-            border:
-                1px solid
-                #fed7aa;
-
-            color: #9a3412;
-
-            border-radius: 10px;
-
-            padding: 17px;
-
-            font-size: 13px;
-
-            line-height: 1.6;
-
-            margin-top: 20px;
-        }
-
-
-        /* =====================================================
-           ACTION BUTTONS
-        ===================================================== */
-
-        .actions {
-
             display: flex;
-
-            justify-content: center;
-
-            gap: 15px;
-
-            margin: 30px 0;
+            justify-content: space-between;
+            align-items: center;
         }
 
-
-        .btn {
-
-            text-decoration: none;
-
-            padding: 12px 22px;
-
-            border-radius: 8px;
-
-            font-weight: bold;
-
+        .check-name {
+            font-weight: 600;
             font-size: 14px;
         }
 
+        .check-status {
+            font-size: 12px;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
 
-        .primary {
+        .passed {
+            background: #dcfce7;
+            color: #166534;
+        }
 
+        .failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* ================= ML ANALYSIS ================= */
+
+        .ml-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 22px;
+        }
+
+        .ml-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .ml-status {
+            font-size: 14px;
+            font-weight: bold;
+            padding: 8px 14px;
+            border-radius: 20px;
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .ml-score {
+            font-size: 30px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+
+        .ml-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .ml-detail {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 14px;
+            border-radius: 10px;
+        }
+
+        .ml-detail small {
+            display: block;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+
+        .ml-detail strong {
+            color: #0f172a;
+        }
+
+        .ml-explanation {
+            background: white;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            border-radius: 8px;
+            color: #475569;
+            font-size: 14px;
+        }
+
+        .ml-note {
+            margin-top: 15px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+
+        /* ================= DOCUMENT COMPARISON ================= */
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .document-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+
+        .document-title {
+            padding: 13px 15px;
+            background: #0f172a;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .document-viewer {
+            width: 100%;
+            height: 500px;
+            border: none;
+            background: white;
+        }
+
+        .no-reference {
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #64748b;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* ================= SIMILARITY ================= */
+
+        .similarity-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .similarity-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .similarity-score {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+        }
+
+        .similarity-status {
+            background: #dbeafe;
+            color: #1d4ed8;
+            padding: 7px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* ================= IMAGE QUALITY ================= */
+
+        .quality-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .quality-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .quality-card small {
+            color: #64748b;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .quality-card strong {
+            font-size: 18px;
+            color: #0f172a;
+        }
+
+        /* ================= RISK ANALYSIS ================= */
+
+        .risk-summary {
+            background: #eff6ff;
+            border-left: 4px solid #2563eb;
+            border-radius: 8px;
+            padding: 17px;
+            margin-bottom: 20px;
+            color: #1e3a8a;
+        }
+
+        .risk-list {
+            list-style: none;
+        }
+
+        .risk-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+            color: #475569;
+        }
+
+        .risk-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* ================= OCR ================= */
+
+        details {
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        summary {
+            cursor: pointer;
+            padding: 15px;
+            background: #f8fafc;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        .ocr-text {
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        /* ================= DISCLAIMER ================= */
+
+        .disclaimer {
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            border-radius: 10px;
+            padding: 18px;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        /* ================= BUTTONS ================= */
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            text-decoration: none;
+            padding: 12px 22px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
             background: #2563eb;
-
             color: white;
         }
 
-
-        .secondary {
-
-            background: white;
-
-            color: #1e40af;
-
-            border:
-                1px solid
-                #bfdbfe;
+        .btn-primary:hover {
+            background: #1d4ed8;
         }
 
-
-        .btn:hover {
-
-            opacity: 0.9;
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
         }
 
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
 
-        /* =====================================================
-           FOOTER
-        ===================================================== */
+        /* ================= FOOTER ================= */
 
-        footer {
-
+        .footer {
             text-align: center;
-
-            color: #94a3b8;
-
-            font-size: 12px;
-
-            padding: 25px;
+            padding: 30px 20px;
+            color: #64748b;
+            font-size: 13px;
         }
 
+        /* ================= RESPONSIVE ================= */
 
-        /* =====================================================
-           TABLET
-        ===================================================== */
+        @media (max-width: 850px) {
 
-        @media (max-width: 900px) {
-
-            .score-grid {
-
-                grid-template-columns:
-                    repeat(2, 1fr);
-            }
-
-
+            .info-grid,
             .quality-grid {
-
-                grid-template-columns:
-                    repeat(2, 1fr);
+                grid-template-columns: repeat(2, 1fr);
             }
 
-
-            .grid {
-
+            .comparison-grid {
                 grid-template-columns: 1fr;
             }
 
-
-            .comparison-container {
-
+            .checks {
                 grid-template-columns: 1fr;
-            }
-
-
-            .overall-card {
-
-                flex-direction: column;
-
-                text-align: center;
             }
         }
-
-
-        /* =====================================================
-           MOBILE
-        ===================================================== */
 
         @media (max-width: 600px) {
 
-            header {
-
-                padding: 18px;
-
+            .header {
+                padding: 18px 20px;
                 flex-direction: column;
-
-                gap: 15px;
-
-                text-align: center;
+                align-items: flex-start;
+                gap: 5px;
             }
-
 
             .container {
-
-                width: 94%;
-
-                margin-top: 20px;
+                margin: 20px auto;
+                padding: 0 12px;
             }
 
+            .section,
+            .result-card {
+                padding: 20px;
+            }
 
             .page-title h1 {
-
                 font-size: 24px;
             }
 
+            .overall-score {
+                font-size: 45px;
+            }
 
-            .score-grid {
+            .status-box {
+                text-align: left;
+            }
 
+            .info-grid,
+            .quality-grid,
+            .ml-details {
                 grid-template-columns: 1fr;
             }
 
-
-            .quality-grid {
-
-                grid-template-columns: 1fr;
+            .document-viewer {
+                height: 400px;
             }
 
-
-            .ml-grid {
-
-                grid-template-columns: 1fr;
+            .no-reference {
+                height: 400px;
             }
 
-
-            .section {
-
-                padding: 18px;
+            .metric-header {
+                align-items: flex-start;
             }
 
-
-            .document-preview {
-
-                height: 450px;
-            }
-
-
-            .actions {
-
-                flex-direction: column;
-            }
-
-
-            .btn {
-
-                text-align: center;
+            .metric-weight {
+                margin-left: 0;
+                margin-top: 5px;
             }
         }
-
     </style>
-
 </head>
-
 
 <body>
 
+    <!-- ================= HEADER ================= -->
 
-<!-- =========================================================
-     HEADER
-========================================================= -->
-
-<header>
-
-    <div>
+    <header class="header">
 
         <div class="logo">
-            🛡️ Academic Authenticity Validator
+            🔐 Authenticity <span>Validator</span>
         </div>
 
-        <div class="subtitle">
-            AI-assisted academic document verification
+        <div class="header-text">
+            Academic Document Verification System
         </div>
 
-    </div>
+    </header>
 
 
-    <a
-        href="/"
-        class="back-btn"
-    >
-        ← Home
-    </a>
+    <main class="container">
 
-</header>
+        <!-- ================= PAGE TITLE ================= -->
 
+        <div class="page-title">
 
-
-<!-- =========================================================
-     MAIN CONTAINER
-========================================================= -->
-
-<div class="container">
-
-
-    <!-- =====================================================
-         PAGE TITLE
-    ===================================================== -->
-
-    <div class="page-title">
-
-        <h1>
-            Verification Result
-        </h1>
-
-        <p>
-            Analysis completed for:
-            <strong>{{ filename }}</strong>
-        </p>
-
-    </div>
-
-
-
-    <!-- =====================================================
-         OVERALL RESULT
-    ===================================================== -->
-
-    <div class="overall-card">
-
-
-        <div class="overall-left">
-
-            <h2>
-                Overall Verification Assessment
-            </h2>
-
+            <h1>Document Verification Result</h1>
 
             <p>
-
-                The result combines document information
-                verification, visual similarity,
-                machine-learning analysis and image
-                quality.
-
+                Analysis completed for:
+                <strong>{{ filename }}</strong>
             </p>
 
+        </div>
 
-            <div class="status">
-                {{ status }}
+
+        <!-- ================= OVERALL RESULT ================= -->
+
+        <div class="result-card">
+
+            <div class="result-top">
+
+                <div>
+
+                    <div class="result-label">
+                        Overall Verification Score
+                    </div>
+
+                    <div class="overall-score">
+                        {{ overall_score|round(2) }}
+                        <span class="score-percent">%</span>
+                    </div>
+
+                </div>
+
+
+                <div class="status-box">
+
+                    <div class="status">
+                        {{ status }}
+                    </div>
+
+                    <div class="status-description">
+                        Based on OCR, visual comparison,
+                        ML analysis and image quality.
+                    </div>
+
+                </div>
+
             </div>
 
         </div>
 
 
+        <!-- ================= SCORE BREAKDOWN ================= -->
 
-        <div class="score-circle">
+        <div class="section">
 
-            <div class="score-number">
-                {{ overall_score }}%
+            <div class="section-title">
+                📊 Verification Score Breakdown
             </div>
 
-            <div class="score-label">
-                Overall Score
+            <div class="score-explanation">
+
+                The overall assessment combines four
+                verification signals. A higher consistency
+                score indicates stronger agreement with the
+                available verification evidence.
+
             </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =====================================================
-         SCORE BREAKDOWN
-    ===================================================== -->
-
-    <div class="section">
-
-
-        <div class="section-title">
-
-            📊 Verification Score Breakdown
-
-        </div>
-
-
-        <div class="score-grid">
 
 
             <!-- OCR -->
 
-            <div class="score-card">
+            <div class="metric-row">
 
-                <h3>
-                    OCR Verification
-                </h3>
+                <div class="metric-header">
 
+                    <div>
+                        <strong>🔎 OCR Verification</strong>
 
-                <div class="component-score">
+                        <span class="metric-weight">
+                            30% weight
+                        </span>
+                    </div>
 
-                    {{ verification_component }}%
-
-                </div>
-
-
-                <div class="weight">
-                    Weight: 30%
-                </div>
-
-            </div>
-
-
-
-            <!-- VISUAL -->
-
-            <div class="score-card">
-
-                <h3>
-                    Visual Similarity
-                </h3>
-
-
-                <div class="component-score">
-
-                    {{ similarity_component|round(2) }}%
+                    <strong>
+                        {{ verification_component|round(2) }}%
+                    </strong>
 
                 </div>
 
+                <div class="progress-bar">
 
-                <div class="weight">
-                    Weight: 30%
+                    <div class="progress-fill"
+                         style="width: {{ verification_component }}%;">
+                    </div>
+
                 </div>
 
             </div>
 
+
+            <!-- VISUAL SIMILARITY -->
+
+            <div class="metric-row">
+
+                <div class="metric-header">
+
+                    <div>
+                        <strong>📄 Visual Similarity</strong>
+
+                        <span class="metric-weight">
+                            30% weight
+                        </span>
+                    </div>
+
+                    <strong>
+                        {{ similarity_component|round(2) }}%
+                    </strong>
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div class="progress-fill"
+                         style="width: {{ similarity_component }}%;">
+                    </div>
+
+                </div>
+
+            </div>
 
 
             <!-- ML -->
 
-            <div class="score-card">
+            <div class="metric-row">
 
-                <h3>
-                    ML Consistency
-                </h3>
+                <div class="metric-header">
 
+                    <div>
+                        <strong>🤖 ML Consistency</strong>
 
-                <div class="component-score">
-
-                    {{ ml_component|round(2) }}%
-
-                </div>
-
-
-                <div class="weight">
-                    Weight: 25%
-                </div>
-
-            </div>
-
-
-
-            <!-- IMAGE -->
-
-            <div class="score-card">
-
-                <h3>
-                    Image Quality
-                </h3>
-
-
-                <div class="component-score">
-
-                    {{ quality_component }}%
-
-                </div>
-
-
-                <div class="weight">
-                    Weight: 15%
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =====================================================
-         EXTRACTED INFORMATION + VERIFICATION
-    ===================================================== -->
-
-    <div class="grid">
-
-
-        <!-- EXTRACTED INFORMATION -->
-
-        <div class="section">
-
-
-            <div class="section-title">
-
-                📋 Extracted Information
-
-            </div>
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Candidate Name
-                </div>
-
-
-                <div class="info-value">
-
-                    {% if details.candidate_name %}
-
-                        {{ details.candidate_name }}
-
-                    {% else %}
-
-                        Not detected
-
-                    {% endif %}
-
-                </div>
-
-            </div>
-
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Register Number
-                </div>
-
-
-                <div class="info-value">
-
-                    {% if details.register_number %}
-
-                        {{ details.register_number }}
-
-                    {% else %}
-
-                        Not detected
-
-                    {% endif %}
-
-                </div>
-
-            </div>
-
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Date of Birth
-                </div>
-
-
-                <div class="info-value">
-
-                    {% if details.date_of_birth %}
-
-                        {{ details.date_of_birth }}
-
-                    {% else %}
-
-                        Not detected
-
-                    {% endif %}
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- VERIFICATION CHECKS -->
-
-        <div class="section">
-
-
-            <div class="section-title">
-
-                🔍 Verification Checks
-
-            </div>
-
-
-            {% for check_name, result in checks.items() %}
-
-
-            <div class="check-item">
-
-
-                <div class="check-name">
-
-                    {{ check_name }}
-
-                </div>
-
-
-                {% if result %}
-
-                    <div class="check-result passed">
-
-                        ✓ Passed
-
+                        <span class="metric-weight">
+                            25% weight
+                        </span>
                     </div>
-
-                {% else %}
-
-                    <div class="check-result failed">
-
-                        ✕ Not Verified
-
-                    </div>
-
-                {% endif %}
-
-
-            </div>
-
-
-            {% endfor %}
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =====================================================
-         MACHINE LEARNING
-    ===================================================== -->
-
-    <div class="section">
-
-
-        <div class="section-title">
-
-            🤖 Machine Learning Anomaly Analysis
-
-        </div>
-
-
-        {% if ml_result.available %}
-
-
-        <div class="ml-card">
-
-
-            <div class="ml-header">
-
-
-                <div class="ml-title">
-
-                    Isolation Forest Analysis
-
-                </div>
-
-
-                <div class="ml-badge">
-
-                    ML ACTIVE
-
-                </div>
-
-            </div>
-
-
-
-            <div class="ml-score">
-
-                {{ ml_result.anomaly_score }}
-
-            </div>
-
-
-            <div class="info-label">
-
-                Anomaly Score
-
-            </div>
-
-
-
-            <p class="ml-description">
-
-                {{ ml_result.explanation }}
-
-            </p>
-
-
-
-            <div class="ml-grid">
-
-
-                <div class="ml-small-card">
-
-                    <span>
-                        ML Status
-                    </span>
-
 
                     <strong>
+                        {{ ml_component|round(2) }}%
+                    </strong>
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div class="progress-fill"
+                         style="width: {{ ml_component }}%;">
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- IMAGE QUALITY -->
+
+            <div class="metric-row">
+
+                <div class="metric-header">
+
+                    <div>
+                        <strong>🖼️ Image Quality</strong>
+
+                        <span class="metric-weight">
+                            15% weight
+                        </span>
+                    </div>
+
+                    <strong>
+                        {{ quality_component|round(2) }}%
+                    </strong>
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div class="progress-fill"
+                         style="width: {{ quality_component }}%;">
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= EXTRACTED INFORMATION ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                👤 Extracted Document Information
+            </div>
+
+            <div class="info-grid">
+
+                <div class="info-card">
+
+                    <div class="info-label">
+                        Candidate Name
+                    </div>
+
+                    <div class="info-value">
+                        {{ details.candidate_name or "Not detected" }}
+                    </div>
+
+                </div>
+
+
+                <div class="info-card">
+
+                    <div class="info-label">
+                        Register Number
+                    </div>
+
+                    <div class="info-value">
+                        {{ details.register_number or "Not detected" }}
+                    </div>
+
+                </div>
+
+
+                <div class="info-card">
+
+                    <div class="info-label">
+                        Date of Birth
+                    </div>
+
+                    <div class="info-value">
+                        {{ details.date_of_birth or "Not detected" }}
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= VERIFICATION CHECKS ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                ✅ Verification Checks
+            </div>
+
+            <div class="checks">
+
+                {% for name, passed in checks.items() %}
+
+                <div class="check-item">
+
+                    <div class="check-name">
+                        {{ name }}
+                    </div>
+
+                    {% if passed %}
+
+                    <div class="check-status passed">
+                        ✓ PASSED
+                    </div>
+
+                    {% else %}
+
+                    <div class="check-status failed">
+                        ✕ NOT VERIFIED
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= ML ANALYSIS ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                🤖 Machine Learning Analysis
+            </div>
+
+            <div class="ml-card">
+
+                <div class="ml-top">
+
+                    <div>
+
+                        <div class="result-label">
+                            Visual / Layout Anomaly Score
+                        </div>
+
+                        <div class="ml-score">
+
+                            {% if ml_result.anomaly_score is not none %}
+                                {{ ml_result.anomaly_score|round(2) }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="ml-status">
 
                         {{ ml_result.status }}
 
+                    </div>
+
+                </div>
+
+
+                <div class="ml-details">
+
+                    <div class="ml-detail">
+
+                        <small>
+                            Reference Documents
+                        </small>
+
+                        <strong>
+                            {{ ml_result.reference_count }}
+                        </strong>
+
+                    </div>
+
+
+                    <div class="ml-detail">
+
+                        <small>
+                            Model Prediction
+                        </small>
+
+                        <strong>
+                            {{ ml_result.prediction }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="ml-explanation">
+
+                    <strong>Model Explanation</strong>
+
+                    <br><br>
+
+                    {{ ml_result.explanation }}
+
+                </div>
+
+
+                <div class="ml-note">
+
+                    ⚠️ <strong>Important:</strong>
+
+                    The ML anomaly score measures how much
+                    the document's visual and structural
+                    features differ from the reference
+                    dataset. It does not independently prove
+                    that a document is fraudulent.
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= DOCUMENT COMPARISON ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                📑 Visual Document Comparison
+            </div>
+
+            <div class="comparison-grid">
+
+
+                <!-- UPLOADED DOCUMENT -->
+
+                <div class="document-box">
+
+                    <div class="document-title">
+                        Uploaded Document
+                    </div>
+
+                    {% if uploaded_url %}
+
+                    <iframe
+                        class="document-viewer"
+                        src="{{ uploaded_url }}">
+                    </iframe>
+
+                    {% else %}
+
+                    <div class="no-reference">
+                        Uploaded document preview
+                        unavailable.
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+
+                <!-- REFERENCE DOCUMENT -->
+
+                <div class="document-box">
+
+                    <div class="document-title">
+
+                        Best Matching Reference
+
+                        {% if reference_filename %}
+                            — {{ reference_filename }}
+                        {% endif %}
+
+                    </div>
+
+                    {% if reference_url %}
+
+                    <iframe
+                        class="document-viewer"
+                        src="{{ reference_url }}">
+                    </iframe>
+
+                    {% else %}
+
+                    <div class="no-reference">
+
+                        No reference document was
+                        available for comparison.
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= SIMILARITY RESULT ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                🔍 Visual Similarity Result
+            </div>
+
+            <div class="similarity-card">
+
+                <div class="similarity-top">
+
+                    <div>
+
+                        <div class="result-label">
+                            Best Reference Similarity
+                        </div>
+
+                        <div class="similarity-score">
+
+                            {% if authenticity_info %}
+
+                                {{ authenticity_info.similarity|round(2) }}%
+
+                            {% else %}
+
+                                N/A
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+
+                    {% if authenticity_info %}
+
+                    <div class="similarity-status">
+
+                        {{ authenticity_info.status }}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+
+                {% if authenticity_info %}
+
+                <div>
+
+                    Compared against:
+
+                    <strong>
+                        {{ authenticity_info.filename }}
+                    </strong>
+
+                </div>
+
+                {% else %}
+
+                <div style="color:#64748b;">
+                    No reference document was available
+                    for visual comparison.
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+        <!-- ================= IMAGE QUALITY ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                🖼️ Image Quality Analysis
+            </div>
+
+            <div class="quality-grid">
+
+
+                <div class="quality-card">
+
+                    <small>
+                        Quality
+                    </small>
+
+                    <strong>
+                        {{ image_info.image_quality }}
                     </strong>
 
                 </div>
 
 
+                <div class="quality-card">
 
-                <div class="ml-small-card">
+                    <small>
+                        Blur / Sharpness Score
+                    </small>
 
-                    <span>
-                        Reference Documents
-                    </span>
+                    <strong>
+                        {{ image_info.blur_score }}
+                    </strong>
 
+                </div>
+
+
+                <div class="quality-card">
+
+                    <small>
+                        Resolution
+                    </small>
 
                     <strong>
 
-                        {{ ml_result.reference_count }}
+                        {% if image_info.width and image_info.height %}
 
-                    </strong>
+                            {{ image_info.width }}
+                            ×
+                            {{ image_info.height }}
 
-                </div>
+                        {% else %}
 
+                            N/A
 
-
-                <div class="ml-small-card">
-
-                    <span>
-                        IF Prediction
-                    </span>
-
-
-                    <strong>
-
-                        {{ ml_result.prediction }}
+                        {% endif %}
 
                     </strong>
 
@@ -1612,422 +1257,122 @@
         </div>
 
 
-        {% else %}
+        <!-- ================= RISK ANALYSIS ================= -->
+
+        <div class="section">
+
+            <div class="section-title">
+                🛡️ Risk Analysis
+            </div>
 
 
-        <div class="reference-box">
+            <div class="risk-summary">
 
-            <strong>
-                ML analysis unavailable
-            </strong>
-
-
-            <p style="margin-top:8px;color:#64748b;">
-
-                The machine-learning analysis could not
-                be performed for this document.
-
-            </p>
-
-        </div>
-
-
-        {% endif %}
-
-    </div>
-
-
-
-    <!-- =====================================================
-         VISUAL DOCUMENT COMPARISON
-    ===================================================== -->
-
-    <div class="section">
-
-
-        <div class="section-title">
-
-            📄 Visual Document Comparison
-
-        </div>
-
-
-        {% if authenticity_info %}
-
-
-        <div class="comparison-intro">
-
-            <p>
-
-                The uploaded document is compared with
-                the reference document that produced
-                the highest visual similarity.
-
-            </p>
-
-        </div>
-
-
-
-        <div class="comparison-container">
-
-
-            <!-- UPLOADED DOCUMENT -->
-
-            <div class="document-card">
-
-
-                <div class="document-title">
-
-                    📤 Uploaded Document
-
-                </div>
-
-
-                <div class="document-name">
-
-                    {{ filename }}
-
-                </div>
-
-
-                <iframe
-                    src="{{ uploaded_url }}"
-                    class="document-preview">
-                </iframe>
-
+                <strong>
+                    {{ risk_explanation.summary }}
+                </strong>
 
             </div>
 
 
+            <ul class="risk-list">
 
-            <!-- REFERENCE DOCUMENT -->
+                {% for reason in risk_explanation.reasons %}
 
-            <div class="document-card">
+                <li>
+                    • {{ reason }}
+                </li>
 
+                {% endfor %}
 
-                <div class="document-title">
-
-                    📚 Closest Reference
-
-                </div>
-
-
-                <div class="document-name">
-
-                    {{ reference_filename }}
-
-                </div>
-
-
-                <iframe
-                    src="{{ reference_url }}"
-                    class="document-preview">
-                </iframe>
-
-
-            </div>
+            </ul>
 
         </div>
 
 
+        <!-- ================= OCR TEXT ================= -->
 
-        <!-- SIMILARITY -->
+        <div class="section">
 
-        <div class="similarity-result">
-
-
-            <div class="similarity-number">
-
-                {{ authenticity_info.similarity }}%
-
+            <div class="section-title">
+                📝 OCR Extracted Text
             </div>
 
+            <details>
 
-            <div class="similarity-label">
+                <summary>
+                    Click to view extracted text
+                </summary>
 
-                Visual Similarity
-
-            </div>
-
-
-            <div class="similarity-status">
-
-                {{ authenticity_info.status }}
-
-            </div>
-
-        </div>
-
-
-        {% else %}
-
-
-        <div class="reference-box">
-
-            No reference document was available
-            for visual comparison.
-
-        </div>
-
-
-        {% endif %}
-
-    </div>
-
-
-
-    <!-- =====================================================
-         IMAGE QUALITY
-    ===================================================== -->
-
-    <div class="section">
-
-
-        <div class="section-title">
-
-            🖼️ Image Quality Analysis
-
-        </div>
-
-
-        <div class="quality-grid">
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Image Quality
-                </div>
-
-
-                <div class="info-value">
-
-                    {{ image_info.image_quality }}
-
-                </div>
-
-            </div>
-
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Blur Score
-                </div>
-
-
-                <div class="info-value">
-
-                    {{ image_info.blur_score }}
-
-                </div>
-
-            </div>
-
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Width
-                </div>
-
-
-                <div class="info-value">
-
-                    {{ image_info.width }} px
-
-                </div>
-
-            </div>
-
-
-
-            <div class="info-card">
-
-                <div class="info-label">
-                    Height
-                </div>
-
-
-                <div class="info-value">
-
-                    {{ image_info.height }} px
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- =====================================================
-         RISK ANALYSIS
-    ===================================================== -->
-
-    <div class="section">
-
-
-        <div class="section-title">
-
-            ⚠️ Risk Analysis
-
-        </div>
-
-
-        <div class="risk-summary">
-
-
-            <strong>
-                Assessment:
-            </strong>
-
-
-            {{ risk_explanation.summary }}
-
-        </div>
-
-
-
-        <ul class="reason-list">
-
-
-            {% for reason in risk_explanation.reasons %}
-
-            <li>
-
-                {{ reason }}
-
-            </li>
-
-            {% endfor %}
-
-
-        </ul>
-
-    </div>
-
-
-
-    <!-- =====================================================
-         OCR TEXT
-    ===================================================== -->
-
-    <div class="section">
-
-
-        <div class="section-title">
-
-            📝 OCR Extracted Text
-
-        </div>
-
-
-        <details>
-
-
-            <summary>
-
-                Show extracted text
-
-            </summary>
-
-
-            <div class="ocr-text">
-
+                <div class="ocr-text">
 {{ text }}
+                </div>
+
+            </details>
+
+        </div>
+
+
+        <!-- ================= DISCLAIMER ================= -->
+
+        <div class="section">
+
+            <div class="disclaimer">
+
+                <strong>⚠️ Prototype / Decision Support Notice</strong>
+
+                <br><br>
+
+                This system is designed as an academic
+                document verification prototype.
+
+                The verification result combines OCR
+                extraction, visual similarity, machine
+                learning-based visual anomaly detection,
+                and image quality analysis.
+
+                <br><br>
+
+                A high anomaly score or a low similarity
+                score does not by itself establish that a
+                document is fraudulent. Documents requiring
+                review should be checked against authoritative
+                institutional records.
 
             </div>
 
-
-        </details>
-
-    </div>
+        </div>
 
 
+        <!-- ================= ACTION BUTTONS ================= -->
 
-    <!-- =====================================================
-         DISCLAIMER
-    ===================================================== -->
+        <div class="actions">
 
-    <div class="disclaimer">
+            <a href="/upload"
+               class="btn btn-primary">
+                🔄 Verify Another Document
+            </a>
 
+            <a href="/"
+               class="btn btn-secondary">
+                🏠 Back to Home
+            </a>
 
-        <strong>
-            Important:
-        </strong>
+        </div>
 
-
-        This system provides AI-assisted document
-        verification based on OCR, visual similarity,
-        image quality and machine-learning anomaly
-        detection.
-
-
-        An anomaly score indicates deviation from the
-        reference dataset; it does not independently
-        prove that a document is fraudulent or authentic.
+    </main>
 
 
-        Final verification should involve appropriate
-        manual or institutional validation.
+    <!-- ================= FOOTER ================= -->
 
-    </div>
+    <footer class="footer">
 
+        Authenticity Validator for Academia
+        <br>
 
+        AI-Assisted Academic Document Verification Prototype
 
-    <!-- =====================================================
-         BUTTONS
-    ===================================================== -->
-
-    <div class="actions">
-
-
-        <a
-            href="/upload"
-            class="btn primary"
-        >
-
-            🔄 Analyze Another Document
-
-        </a>
-
-
-        <a
-            href="/"
-            class="btn secondary"
-        >
-
-            🏠 Back to Home
-
-        </a>
-
-    </div>
-
-
-</div>
-
-
-
-<!-- =========================================================
-     FOOTER
-========================================================= -->
-
-<footer>
-
-    Academic Authenticity Validator
-
-    <br>
-
-    AI-assisted document analysis prototype
-
-</footer>
-
+    </footer>
 
 </body>
 

@@ -1,10 +1,4 @@
-from flask import (
-    Flask,
-    render_template,
-    request,
-    send_from_directory
-)
-
+from flask import Flask, render_template, request, send_from_directory
 import os
 
 from utils.ocr import extract_text_from_pdf
@@ -32,6 +26,8 @@ REFERENCE_FOLDER = "reference_documents"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+
+# Create required folders
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(REFERENCE_FOLDER, exist_ok=True)
 os.makedirs("static/uploads", exist_ok=True)
@@ -43,6 +39,7 @@ os.makedirs("static/uploads", exist_ok=True)
 
 @app.route("/")
 def home():
+
     return render_template("index.html")
 
 
@@ -52,27 +49,30 @@ def home():
 
 @app.route("/upload")
 def upload():
+
     return render_template("upload.html")
 
 
 # =========================================================
-# SERVE UPLOADED DOCUMENT
+# SERVE UPLOADED PDF
 # =========================================================
 
-@app.route("/uploaded/<filename>")
+@app.route("/uploads/<filename>")
 def uploaded_file(filename):
+
     return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
+        UPLOAD_FOLDER,
         filename
     )
 
 
 # =========================================================
-# SERVE REFERENCE DOCUMENT
+# SERVE REFERENCE PDF
 # =========================================================
 
-@app.route("/reference/<filename>")
+@app.route("/references/<filename>")
 def reference_file(filename):
+
     return send_from_directory(
         REFERENCE_FOLDER,
         filename
@@ -87,20 +87,24 @@ def reference_file(filename):
 def analyze():
 
     # -----------------------------------------------------
-    # 1. Check upload
+    # Check file
     # -----------------------------------------------------
 
     if "document" not in request.files:
+
         return "No document uploaded"
+
 
     file = request.files["document"]
 
+
     if file.filename == "":
+
         return "No file selected"
 
 
     # -----------------------------------------------------
-    # 2. Save document
+    # Save uploaded document
     # -----------------------------------------------------
 
     filepath = os.path.join(
@@ -111,23 +115,27 @@ def analyze():
     file.save(filepath)
 
 
-    # -----------------------------------------------------
-    # 3. OCR
-    # -----------------------------------------------------
+    # =====================================================
+    # 1. OCR
+    # =====================================================
 
-    text = extract_text_from_pdf(filepath)
-
-
-    # -----------------------------------------------------
-    # 4. Extract details
-    # -----------------------------------------------------
-
-    details = extract_details(text)
+    text = extract_text_from_pdf(
+        filepath
+    )
 
 
-    # -----------------------------------------------------
-    # 5. Verification
-    # -----------------------------------------------------
+    # =====================================================
+    # 2. EXTRACT INFORMATION
+    # =====================================================
+
+    details = extract_details(
+        text
+    )
+
+
+    # =====================================================
+    # 3. BASIC VERIFICATION
+    # =====================================================
 
     checks, verification_score, verification_status = (
         verify_document(
@@ -137,23 +145,27 @@ def analyze():
     )
 
 
-    # -----------------------------------------------------
-    # 6. Image quality
-    # -----------------------------------------------------
+    # =====================================================
+    # 4. IMAGE QUALITY
+    # =====================================================
 
-    image_info = analyze_image(filepath)
+    image_info = analyze_image(
+        filepath
+    )
 
 
-    # -----------------------------------------------------
-    # 7. Reference comparison
-    # -----------------------------------------------------
+    # =====================================================
+    # 5. REFERENCE DOCUMENT COMPARISON
+    # =====================================================
 
     authenticity_info = find_best_reference(
         filepath,
         REFERENCE_FOLDER
     )
 
+
     similarity_score = None
+
 
     if authenticity_info:
 
@@ -162,9 +174,9 @@ def analyze():
         )
 
 
-    # -----------------------------------------------------
-    # 8. Machine learning
-    # -----------------------------------------------------
+    # =====================================================
+    # 6. MACHINE LEARNING ANALYSIS
+    # =====================================================
 
     ml_result = analyze_with_ml(
         filepath,
@@ -172,9 +184,9 @@ def analyze():
     )
 
 
-    # -----------------------------------------------------
-    # 9. Overall risk
-    # -----------------------------------------------------
+    # =====================================================
+    # 7. OVERALL RISK SCORE
+    # =====================================================
 
     risk_result = calculate_risk_score(
 
@@ -193,9 +205,9 @@ def analyze():
     )
 
 
-    # -----------------------------------------------------
-    # 10. Risk explanation
-    # -----------------------------------------------------
+    # =====================================================
+    # 8. RISK EXPLANATION
+    # =====================================================
 
     risk_explanation = generate_risk_explanation(
 
@@ -217,23 +229,34 @@ def analyze():
 
 
     # =====================================================
-    # SCORE BREAKDOWN
+    # 9. SCORE BREAKDOWN FOR HTML
     # =====================================================
 
+    # OCR score
     verification_component = verification_score
 
 
+    # Visual similarity
     if similarity_score is not None:
+
         similarity_component = similarity_score
+
     else:
+
         similarity_component = 0
 
 
-    if ml_result.get("anomaly_score") is not None:
+    # ML consistency
+    ml_anomaly_score = ml_result.get(
+        "anomaly_score"
+    )
 
-        ml_component = (
-            100 -
-            ml_result.get("anomaly_score")
+
+    if ml_anomaly_score is not None:
+
+        ml_component = max(
+            0,
+            100 - ml_anomaly_score
         )
 
     else:
@@ -241,98 +264,153 @@ def analyze():
         ml_component = 0
 
 
-    ml_component = max(
-        0,
-        min(
-            100,
-            ml_component
-        )
+    # Image quality
+    image_quality = image_info.get(
+        "image_quality",
+        "Unknown"
     )
 
 
-    quality_component = risk_result[
-        "quality_score"
-    ]
+    if image_quality == "Good":
+
+        quality_component = 100
+
+    elif image_quality == "Moderate":
+
+        quality_component = 60
+
+    elif image_quality == "Low":
+
+        quality_component = 30
+
+    else:
+
+        quality_component = 0
 
 
     # =====================================================
-    # REFERENCE URL
+    # 10. PDF PREVIEW URLs
     # =====================================================
+
+    uploaded_url = (
+        "/uploads/"
+        + file.filename
+    )
+
+
+    reference_url = None
 
     reference_filename = None
-    reference_url = None
+
 
     if authenticity_info:
 
-        reference_filename = authenticity_info.get(
-            "filename"
+        reference_filename = (
+            authenticity_info.get(
+                "filename"
+            )
         )
+
 
         if reference_filename:
 
             reference_url = (
-                "/reference/" +
-                reference_filename
+                "/references/"
+                + reference_filename
             )
 
 
     # =====================================================
-    # UPLOADED DOCUMENT URL
-    # =====================================================
-
-    uploaded_url = (
-        "/uploaded/" +
-        file.filename
-    )
-
-
-    # =====================================================
-    # RESULT PAGE
+    # 11. RENDER RESULT PAGE
     # =====================================================
 
     return render_template(
 
         "result.html",
 
+        # -----------------------------------------------
         # Basic
-        filename=file.filename,
-        uploaded_url=uploaded_url,
+        # -----------------------------------------------
 
-        # OCR
+        filename=file.filename,
+
         text=text,
 
-        # Extracted details
+        # -----------------------------------------------
+        # Extracted information
+        # -----------------------------------------------
+
         details=details,
 
+        # -----------------------------------------------
         # Verification
+        # -----------------------------------------------
+
         checks=checks,
+
         score=verification_score,
+
         verification_status=verification_status,
 
-        # Overall
+        # -----------------------------------------------
+        # Overall result
+        # -----------------------------------------------
+
         status=risk_result["status"],
-        overall_score=risk_result["overall_score"],
-        quality_score=risk_result["quality_score"],
 
-        # Score components
-        verification_component=verification_component,
-        similarity_component=similarity_component,
-        ml_component=ml_component,
-        quality_component=quality_component,
+        overall_score=risk_result[
+            "overall_score"
+        ],
 
+        # -----------------------------------------------
         # Image
+        # -----------------------------------------------
+
         image_info=image_info,
 
-        # Reference
-        authenticity_info=authenticity_info,
-        reference_filename=reference_filename,
-        reference_url=reference_url,
+        # -----------------------------------------------
+        # Reference comparison
+        # -----------------------------------------------
 
-        # ML
+        authenticity_info=authenticity_info,
+
+        # -----------------------------------------------
+        # Risk
+        # -----------------------------------------------
+
+        quality_score=risk_result[
+            "quality_score"
+        ],
+
+        risk_explanation=risk_explanation,
+
+        # -----------------------------------------------
+        # Machine Learning
+        # -----------------------------------------------
+
         ml_result=ml_result,
 
-        # Explanation
-        risk_explanation=risk_explanation
+        # -----------------------------------------------
+        # Score breakdown
+        # -----------------------------------------------
+
+        verification_component=verification_component,
+
+        similarity_component=similarity_component,
+
+        ml_component=ml_component,
+
+        quality_component=quality_component,
+
+        # -----------------------------------------------
+        # PDF preview
+        # -----------------------------------------------
+
+        uploaded_url=uploaded_url,
+
+        reference_url=reference_url,
+
+        reference_filename=reference_filename
     )
 
 
@@ -341,4 +419,7 @@ def analyze():
 # =========================================================
 
 if __name__ == "__main__":
-    app.run(debug=True)
+
+    app.run(
+        debug=True
+    )
