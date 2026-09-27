@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Verification History</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            background: #f1f5f9;
+
+            color: #0f172a;
+
+        }
+
+
+        /* HEADER */
+
+        .header {
+
+            background: #0f172a;
+
+            color: white;
+
+            padding: 25px 7%;
+
+        }
+
+
+        .header h1 {
+
+            font-size: 27px;
+
+        }
+
+
+        .header p {
+
+            color: #cbd5e1;
+
+            margin-top: 5px;
+
+        }
+
+
+        /* CONTAINER */
+
+        .container {
+
+            width: 92%;
+
+            max-width: 1250px;
+
+            margin: 30px auto;
+
+        }
+
+
+        /* TOP */
+
+        .top-section {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            margin-bottom: 25px;
+
+        }
+
+
+        .top-section h2 {
+
+            font-size: 24px;
+
+        }
+
+
+        .button {
+
+            text-decoration: none;
+
+            background: #2563eb;
+
+            color: white;
+
+            padding: 11px 18px;
+
+            border-radius: 8px;
+
+            font-weight: bold;
+
+        }
+
+
+        /* STATS */
+
+        .stats {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 20px;
+
+            margin-bottom: 25px;
+
+        }
+
+
+        .stat-card {
+
+            background: white;
+
+            padding: 22px;
+
+            border-radius: 14px;
+
+            box-shadow:
+                0 5px 18px
+                rgba(15, 23, 42, 0.08);
+
+        }
+
+
+        .stat-card strong {
+
+            display: block;
+
+            color: #64748b;
+
+            font-size: 13px;
+
+            margin-bottom: 8px;
+
+        }
+
+
+        .stat-card span {
+
+            font-size: 28px;
+
+            font-weight: bold;
+
+            color: #2563eb;
+
+        }
+
+
+        /* TABLE */
+
+        .table-container {
+
+            background: white;
+
+            border-radius: 14px;
+
+            overflow-x: auto;
+
+            box-shadow:
+                0 5px 18px
+                rgba(15, 23, 42, 0.08);
+
+        }
+
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            min-width: 950px;
+
+        }
+
+
+        th {
+
+            background: #0f172a;
+
+            color: white;
+
+            padding: 15px;
+
+            text-align: left;
+
+            font-size: 13px;
+
+        }
+
+
+        td {
+
+            padding: 15px;
+
+            border-bottom:
+                1px solid #e2e8f0;
+
+            font-size: 14px;
+
+        }
+
+
+        tr:hover {
+
+            background: #f8fafc;
+
+        }
+
+
+        /* STATUS */
+
+        .status {
+
+            display: inline-block;
+
+            padding: 6px 12px;
+
+            border-radius: 20px;
+
+            font-size: 12px;
+
+            font-weight: bold;
+
+        }
+
+
+        .low {
+
+            background: #dcfce7;
+
+            color: #166534;
+
+        }
+
+
+        .review {
+
+            background: #fef3c7;
+
+            color: #92400e;
+
+        }
+
+
+        .suspicious {
+
+            background: #fee2e2;
+
+            color: #991b1b;
+
+        }
+
+
+        /* SCORE */
+
+        .score {
+
+            font-weight: bold;
+
+            color: #2563eb;
+
+        }
+
+
+        /* EMPTY */
+
+        .empty {
+
+            text-align: center;
+
+            padding: 60px 20px;
+
+            color: #64748b;
+
+        }
+
+
+        /* FOOTER */
+
+        footer {
+
+            text-align: center;
+
+            color: #64748b;
+
+            padding: 30px;
+
+            font-size: 13px;
+
+        }
+
+
+        /* MOBILE */
+
+        @media (max-width: 700px) {
+
+            .stats {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            .top-section {
+
+                flex-direction: column;
+
+                align-items: flex-start;
+
+                gap: 15px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<!-- HEADER -->
+
+<div class="header">
+
+    <h1>
+        🔍 Academic Document Authenticity Validator
+    </h1>
+
+    <p>
+        Verification History Dashboard
+    </p>
+
+</div>
+
+
+<div class="container">
+
+
+<!-- TOP -->
+
+<div class="top-section">
+
+    <h2>
+        📊 Verification History
+    </h2>
+
+
+    <a
+        href="/upload"
+        class="button">
+
+        + Verify New Document
+
+    </a>
+
+</div>
+
+
+
+<!-- STATISTICS -->
+
+<div class="stats">
+
+
+    <div class="stat-card">
+
+        <strong>
+            Total Documents
+        </strong>
+
+        <span>
+            {{ records|length }}
+        </span>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <strong>
+            Documents Needing Review
+        </strong>
+
+        <span>
+
+            {{ records |
+               selectattr("status", "equalto", "NEEDS REVIEW") |
+               list |
+               length }}
+
+        </span>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <strong>
+            Low Risk Documents
+        </strong>
+
+        <span>
+
+            {{ records |
+               selectattr("status", "equalto", "LOW RISK") |
+               list |
+               length }}
+
+        </span>
+
+    </div>
+
+
+</div>
+
+
+
+<!-- HISTORY TABLE -->
+
+<div class="table-container">
+
+
+{% if records %}
+
+
+<table>
+
+
+<thead>
+
+<tr>
+
+    <th>
+        #
+    </th>
+
+    <th>
+        Document
+    </th>
+
+    <th>
+        Candidate
+    </th>
+
+    <th>
+        Register No.
+    </th>
+
+    <th>
+        Overall Score
+    </th>
+
+    <th>
+        ML Anomaly
+    </th>
+
+    <th>
+        Status
+    </th>
+
+    <th>
+        Date
+    </th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+{% for record in records %}
+
+
+<tr>
+
+
+    <td>
+        {{ record["id"] }}
+    </td>
+
+
+    <td>
+        {{ record["filename"] }}
+    </td>
+
+
+    <td>
+        {{ record["candidate_name"] or "Not detected" }}
+    </td>
+
+
+    <td>
+        {{ record["register_number"] or "Not detected" }}
+    </td>
+
+
+    <td class="score">
+
+        {{ record["overall_score"] }}%
+
+    </td>
+
+
+    <td>
+
+        {% if record["ml_anomaly_score"] is not none %}
+
+            {{ record["ml_anomaly_score"] }}
+
+        {% else %}
+
+            N/A
+
+        {% endif %}
+
+    </td>
+
+
+    <td>
+
+
+        {% if record["status"] == "LOW RISK" %}
+
+            <span class="status low">
+                LOW RISK
+            </span>
+
+
+        {% elif record["status"] == "NEEDS REVIEW" %}
+
+            <span class="status review">
+                NEEDS REVIEW
+            </span>
+
+
+        {% else %}
+
+            <span class="status suspicious">
+                SUSPICIOUS
+            </span>
+
+        {% endif %}
+
+
+    </td>
+
+
+    <td>
+
+        {{ record["created_at"] }}
+
+    </td>
+
+
+</tr>
+
+
+{% endfor %}
+
+
+</tbody>
+
+
+</table>
+
+
+{% else %}
+
+
+<div class="empty">
+
+    <h3>
+        📭 No Verification History
+    </h3>
+
+    <p>
+        Upload a document to start building
+        your verification history.
+    </p>
+
+</div>
+
+
+{% endif %}
+
+
+</div>
+
+
+</div>
+
+
+<footer>
+
+    Academic Document Authenticity Validator
+
+    <br>
+
+    AI-assisted verification prototype
+
+</footer>
+
+
+</body>
+
+</html>
