@@ -21,6 +21,7 @@ from utils.risk_engine import (
 
 from utils.ml_detector import analyze_with_ml
 from utils.tampering_detector import analyze_tampering
+from utils.academic_validator import analyze_academic_consistency
 
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
@@ -292,6 +293,16 @@ def analyze():
 
 
     # =================================================
+    # ACADEMIC CONSISTENCY ANALYSIS
+    # =================================================
+
+    academic_result = analyze_academic_consistency(
+        text,
+        details
+    )
+
+
+    # =================================================
     # RISK SCORE
     # =================================================
 
@@ -546,10 +557,13 @@ def analyze():
         ],
 
         risk_explanation=risk_explanation,
+        risk_result = risk_result,
 
         ml_result=ml_result,
 
         tampering_result=tampering_result,
+
+        academic_result=academic_result,
 
         verification_component=(
             verification_component
