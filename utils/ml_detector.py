@@ -1,18 +1,17 @@
 import os
 import cv2
-import fitz
 import numpy as np
-
-from sklearn.ensemble import IsolationForest
-from sklearn.preprocessing import StandardScaler
+import fitz
 
 
-# ---------------------------------------------------------
-# Convert PDF first page into grayscale image
-# ---------------------------------------------------------
-def pdf_to_gray(pdf_path):
+# ============================================================
+# PDF -> IMAGE
+# ============================================================
+
+def pdf_to_image(pdf_path):
 
     try:
+
         document = fitz.open(pdf_path)
 
         if len(document) == 0:
@@ -23,7 +22,7 @@ def pdf_to_gray(pdf_path):
 
         pix = page.get_pixmap(
             matrix=fitz.Matrix(2, 2),
-            colorspace=fitz.csRGB
+            alpha=False
         )
 
         image = np.frombuffer(
@@ -39,7 +38,7 @@ def pdf_to_gray(pdf_path):
 
         image = cv2.cvtColor(
             image,
-            cv2.COLOR_RGB2GRAY
+            cv2.COLOR_RGB2BGR
         )
 
         document.close()
@@ -47,184 +46,291 @@ def pdf_to_gray(pdf_path):
         return image
 
     except Exception:
+
         return None
 
 
-# ---------------------------------------------------------
-# Extract visual and layout features
-# ---------------------------------------------------------
-def extract_features(pdf_path):
+# ============================================================
+# PREPARE IMAGE
+# ============================================================
 
-    image = pdf_to_gray(pdf_path)
+def prepare_image(image):
 
-    if image is None:
-        return None
-
-    image = cv2.resize(
+    return cv2.resize(
         image,
         (800, 1100)
     )
 
-    features = []
 
-    # Global brightness
-    features.append(
-        np.mean(image)
-    )
+# ============================================================
+# EXTRACT VISUAL + LAYOUT FEATURES
+# ============================================================
 
-    # Contrast
-    features.append(
-        np.std(image)
-    )
+def extract_features(image):
 
-    # Sharpness
-    blur_score = cv2.Laplacian(
+    image = prepare_image(image)
+
+    gray = cv2.cvtColor(
         image,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    # --------------------------------------------------------
+    # Basic image statistics
+    # --------------------------------------------------------
+
+    brightness = np.mean(gray)
+
+    contrast = np.std(gray)
+
+    sharpness = cv2.Laplacian(
+        gray,
         cv2.CV_64F
     ).var()
 
-    features.append(
-        blur_score
-    )
 
-    # Edge density
+    # --------------------------------------------------------
+    # Edge information
+    # --------------------------------------------------------
+
     edges = cv2.Canny(
-        image,
+        gray,
         100,
         200
     )
 
-    features.append(
+    edge_density = (
         np.mean(edges > 0)
+        * 100
     )
 
-    # Dark pixel ratio
-    features.append(
-        np.mean(image < 100)
+
+    # --------------------------------------------------------
+    # Dark / white pixel ratios
+    # --------------------------------------------------------
+
+    dark_ratio = (
+        np.mean(gray < 80)
+        * 100
     )
 
-    # White pixel ratio
-    features.append(
-        np.mean(image > 240)
+    white_ratio = (
+        np.mean(gray > 220)
+        * 100
     )
 
+
+    # --------------------------------------------------------
     # Aspect ratio
-    height, width = image.shape
+    # --------------------------------------------------------
 
-    features.append(
+    height, width = gray.shape
+
+    aspect_ratio = (
         width / height
     )
 
-    # -----------------------------------------------------
-    # Horizontal layout regions
-    # -----------------------------------------------------
 
-    horizontal_regions = np.array_split(
-        image,
-        10,
-        axis=0
-    )
+    features = [
 
-    for region in horizontal_regions:
+        brightness,
+        contrast,
+        sharpness,
+        edge_density,
+        dark_ratio,
+        white_ratio,
+        aspect_ratio
 
-        features.append(
-            np.mean(region)
-        )
-
-        features.append(
-            np.mean(region < 100)
-        )
-
-        region_edges = cv2.Canny(
-            region,
-            100,
-            200
-        )
-
-        features.append(
-            np.mean(region_edges > 0)
-        )
-
-    # -----------------------------------------------------
-    # Vertical layout regions
-    # -----------------------------------------------------
-
-    vertical_regions = np.array_split(
-        image,
-        10,
-        axis=1
-    )
-
-    for region in vertical_regions:
-
-        features.append(
-            np.mean(region)
-        )
-
-        features.append(
-            np.mean(region < 100)
-        )
-
-        region_edges = cv2.Canny(
-            region,
-            100,
-            200
-        )
-
-        features.append(
-            np.mean(region_edges > 0)
-        )
-
-    # -----------------------------------------------------
-    # Horizontal projection
-    # -----------------------------------------------------
-
-    horizontal_projection = np.mean(
-        image < 180,
-        axis=1
-    )
-
-    features.append(
-        np.mean(horizontal_projection)
-    )
-
-    features.append(
-        np.std(horizontal_projection)
-    )
-
-    # -----------------------------------------------------
-    # Vertical projection
-    # -----------------------------------------------------
-
-    vertical_projection = np.mean(
-        image < 180,
-        axis=0
-    )
-
-    features.append(
-        np.mean(vertical_projection)
-    )
-
-    features.append(
-        np.std(vertical_projection)
-    )
-
-    # -----------------------------------------------------
-    # Center region
-    # -----------------------------------------------------
-
-    center = image[
-        275:825,
-        200:600
     ]
 
-    features.append(
-        np.mean(center)
+
+    # ========================================================
+    # HORIZONTAL REGIONS
+    # ========================================================
+
+    horizontal_regions = 10
+
+    for i in range(
+        horizontal_regions
+    ):
+
+        start = int(
+            i * height /
+            horizontal_regions
+        )
+
+        end = int(
+            (i + 1) * height /
+            horizontal_regions
+        )
+
+        region = gray[
+            start:end,
+            :
+        ]
+
+        region_edges = edges[
+            start:end,
+            :
+        ]
+
+
+        region_mean = np.mean(
+            region
+        )
+
+        region_dark = (
+            np.mean(region < 80)
+            * 100
+        )
+
+        region_edge = (
+            np.mean(region_edges > 0)
+            * 100
+        )
+
+
+        features.extend([
+
+            region_mean,
+            region_dark,
+            region_edge
+
+        ])
+
+
+    # ========================================================
+    # VERTICAL REGIONS
+    # ========================================================
+
+    vertical_regions = 10
+
+    for i in range(
+        vertical_regions
+    ):
+
+        start = int(
+            i * width /
+            vertical_regions
+        )
+
+        end = int(
+            (i + 1) * width /
+            vertical_regions
+        )
+
+        region = gray[
+            :,
+            start:end
+        ]
+
+        region_edges = edges[
+            :,
+            start:end
+        ]
+
+
+        region_mean = np.mean(
+            region
+        )
+
+        region_dark = (
+            np.mean(region < 80)
+            * 100
+        )
+
+        region_edge = (
+            np.mean(region_edges > 0)
+            * 100
+        )
+
+
+        features.extend([
+
+            region_mean,
+            region_dark,
+            region_edge
+
+        ])
+
+
+    # ========================================================
+    # PROJECTION FEATURES
+    # ========================================================
+
+    horizontal_projection = (
+        np.mean(
+            gray < 150,
+            axis=1
+        )
     )
 
-    features.append(
-        np.mean(center < 100)
+    vertical_projection = (
+        np.mean(
+            gray < 150,
+            axis=0
+        )
     )
+
+
+    features.extend([
+
+        np.mean(
+            horizontal_projection
+        ),
+
+        np.std(
+            horizontal_projection
+        ),
+
+        np.mean(
+            vertical_projection
+        ),
+
+        np.std(
+            vertical_projection
+        )
+
+    ])
+
+
+    # ========================================================
+    # CENTER REGION
+    # ========================================================
+
+    center_y1 = int(
+        height * 0.25
+    )
+
+    center_y2 = int(
+        height * 0.75
+    )
+
+    center_x1 = int(
+        width * 0.25
+    )
+
+    center_x2 = int(
+        width * 0.75
+    )
+
+
+    center = gray[
+        center_y1:center_y2,
+        center_x1:center_x2
+    ]
+
+
+    features.extend([
+
+        np.mean(center),
+
+        np.mean(
+            center < 80
+        ) * 100
+
+    ])
+
 
     return np.array(
         features,
@@ -232,293 +338,475 @@ def extract_features(pdf_path):
     )
 
 
-# ---------------------------------------------------------
-# Calculate statistical distance from reference documents
-# ---------------------------------------------------------
-def calculate_reference_deviation(
-    reference_features,
-    uploaded_features
+# ============================================================
+# COLLECT REFERENCE FEATURES
+# ============================================================
+
+def collect_reference_features(
+    reference_folder
 ):
 
+    reference_features = []
+
+
+    if not os.path.exists(
+        reference_folder
+    ):
+
+        return np.array([])
+
+
+    reference_files = [
+
+        file
+
+        for file in os.listdir(
+            reference_folder
+        )
+
+        if file.lower().endswith(
+            ".pdf"
+        )
+
+    ]
+
+
+    for filename in reference_files:
+
+        path = os.path.join(
+            reference_folder,
+            filename
+        )
+
+
+        image = pdf_to_image(
+            path
+        )
+
+
+        if image is None:
+
+            continue
+
+
+        try:
+
+            features = extract_features(
+                image
+            )
+
+            reference_features.append(
+                features
+            )
+
+        except Exception:
+
+            continue
+
+
+    if not reference_features:
+
+        return np.array([])
+
+
+    return np.array(
+        reference_features,
+        dtype=np.float64
+    )
+
+
+# ============================================================
+# CALCULATE STATISTICAL DEVIATION
+# ============================================================
+
+def calculate_deviation_score(
+    document_features,
+    reference_features
+):
+
+    if (
+        reference_features.size == 0
+    ):
+
+        return 50.0
+
+
+    # --------------------------------------------------------
     # Calculate mean and standard deviation
-    mean = np.mean(
+    # --------------------------------------------------------
+
+    reference_mean = np.mean(
         reference_features,
         axis=0
     )
 
-    std = np.std(
+
+    reference_std = np.std(
         reference_features,
         axis=0
     )
 
+
+    # --------------------------------------------------------
     # Prevent division by zero
-    std[std < 1e-6] = 1e-6
+    # --------------------------------------------------------
 
-    # Z-score for each feature
-    z_scores = np.abs(
-        (uploaded_features - mean) / std
+    reference_std = np.where(
+        reference_std < 1e-6,
+        1.0,
+        reference_std
     )
 
+
+    # --------------------------------------------------------
+    # Calculate absolute Z-score
+    # --------------------------------------------------------
+
+    z_scores = np.abs(
+
+        (
+            document_features
+            - reference_mean
+        )
+        /
+        reference_std
+
+    )
+
+
+    # --------------------------------------------------------
     # Average deviation
-    deviation = np.mean(
+    # --------------------------------------------------------
+
+    average_deviation = np.mean(
         z_scores
     )
 
-    # Convert to 0-100 scale
-    deviation_score = (
-        deviation / (deviation + 1)
+
+    # --------------------------------------------------------
+    # Convert deviation to 0-100
+    # --------------------------------------------------------
+
+    score = (
+
+        average_deviation
+        /
+        (average_deviation + 1)
+
     ) * 100
 
+
+    score = float(
+        np.clip(
+            score,
+            0,
+            100
+        )
+    )
+
+
     return round(
-        float(deviation_score),
+        score,
         2
     )
 
 
-# ---------------------------------------------------------
-# Main ML analysis
-# ---------------------------------------------------------
+# ============================================================
+# CALCULATE SIMILARITY TO REFERENCE DISTRIBUTION
+# ============================================================
+
+def calculate_reference_similarity(
+    document_features,
+    reference_features
+):
+
+    if reference_features.size == 0:
+
+        return 0.0
+
+
+    reference_mean = np.mean(
+        reference_features,
+        axis=0
+    )
+
+
+    reference_std = np.std(
+        reference_features,
+        axis=0
+    )
+
+
+    reference_std = np.where(
+        reference_std < 1e-6,
+        1.0,
+        reference_std
+    )
+
+
+    z_scores = np.abs(
+
+        (
+            document_features
+            - reference_mean
+        )
+        /
+        reference_std
+
+    )
+
+
+    average_z = np.mean(
+        z_scores
+    )
+
+
+    # Convert deviation into similarity
+
+    similarity = (
+
+        100
+        /
+        (
+            1
+            +
+            average_z
+        )
+
+    )
+
+
+    return round(
+        float(
+            np.clip(
+                similarity,
+                0,
+                100
+            )
+        ),
+        2
+    )
+
+
+# ============================================================
+# MAIN ML ANALYSIS
+# ============================================================
+
 def analyze_with_ml(
     uploaded_path,
     reference_folder
 ):
 
     result = {
+
         "available": False,
-        "anomaly_score": 0,
-        "prediction": 0,
-        "status": "ML UNAVAILABLE",
+
+        "anomaly_score": None,
+
+        "prediction": None,
+
+        "status": "ML ANALYSIS UNAVAILABLE",
+
         "reference_count": 0,
-        "explanation": ""
+
+        "explanation":
+            "ML analysis could not be performed."
+
     }
 
-    # Check uploaded document
-    if not os.path.exists(
-        uploaded_path
-    ):
 
-        result["explanation"] = (
-            "Uploaded document could not be found."
-        )
+    # ========================================================
+    # READ UPLOADED DOCUMENT
+    # ========================================================
 
-        return result
-
-    # Check reference folder
-    if not os.path.exists(
-        reference_folder
-    ):
-
-        result["explanation"] = (
-            "Reference document folder was not found."
-        )
-
-        return result
-
-    # -----------------------------------------------------
-    # Find reference PDFs
-    # -----------------------------------------------------
-
-    reference_files = [
-        file
-        for file in os.listdir(reference_folder)
-        if file.lower().endswith(".pdf")
-    ]
-
-    result["reference_count"] = len(
-        reference_files
-    )
-
-    if len(reference_files) < 5:
-
-        result["explanation"] = (
-            "At least 5 reference documents "
-            "are recommended for anomaly analysis."
-        )
-
-        return result
-
-    # -----------------------------------------------------
-    # Extract uploaded features
-    # -----------------------------------------------------
-
-    uploaded_features = extract_features(
+    uploaded_image = pdf_to_image(
         uploaded_path
     )
 
-    if uploaded_features is None:
+
+    if uploaded_image is None:
 
         result["explanation"] = (
-            "Unable to extract visual features "
-            "from the uploaded document."
+            "Unable to read the uploaded document."
         )
 
         return result
 
-    # -----------------------------------------------------
-    # Extract reference features
-    # -----------------------------------------------------
 
-    reference_features = []
+    # ========================================================
+    # EXTRACT UPLOADED FEATURES
+    # ========================================================
 
-    for filename in reference_files:
+    try:
 
-        filepath = os.path.join(
-            reference_folder,
-            filename
-        )
-
-        features = extract_features(
-            filepath
-        )
-
-        if features is not None:
-
-            reference_features.append(
-                features
+        document_features = (
+            extract_features(
+                uploaded_image
             )
+        )
 
-    if len(reference_features) < 5:
+    except Exception as error:
 
         result["explanation"] = (
-            "Not enough valid reference documents "
-            "could be analyzed."
+            "Unable to extract visual "
+            "and layout features."
         )
 
         return result
 
-    reference_features = np.array(
-        reference_features
+
+    # ========================================================
+    # GET REFERENCE FEATURES
+    # ========================================================
+
+    reference_features = (
+        collect_reference_features(
+            reference_folder
+        )
     )
 
-    # -----------------------------------------------------
-    # Scale features
-    # -----------------------------------------------------
 
-    scaler = StandardScaler()
+    if reference_features.size == 0:
 
-    scaled_reference = scaler.fit_transform(
-        reference_features
-    )
-
-    scaled_uploaded = scaler.transform(
-        uploaded_features.reshape(1, -1)
-    )
-
-    # -----------------------------------------------------
-    # Isolation Forest
-    # -----------------------------------------------------
-
-    model = IsolationForest(
-        n_estimators=500,
-        max_samples="auto",
-        contamination="auto",
-        random_state=42
-    )
-
-    model.fit(
-        scaled_reference
-    )
-
-    prediction = model.predict(
-        scaled_uploaded
-    )[0]
-
-    decision_score = model.decision_function(
-        scaled_uploaded
-    )[0]
-
-    # Convert Isolation Forest score
-    isolation_score = 50 - (
-        decision_score * 100
-    )
-
-    isolation_score = np.clip(
-        isolation_score,
-        0,
-        100
-    )
-
-    # -----------------------------------------------------
-    # Statistical deviation
-    # -----------------------------------------------------
-
-    deviation_score = calculate_reference_deviation(
-        reference_features,
-        uploaded_features
-    )
-
-    # -----------------------------------------------------
-    # Combine both signals
-    # -----------------------------------------------------
-
-    combined_score = (
-        isolation_score * 0.40
-        +
-        deviation_score * 0.60
-    )
-
-    combined_score = np.clip(
-        combined_score,
-        0,
-        100
-    )
-
-    combined_score = round(
-        float(combined_score),
-        2
-    )
-
-    # -----------------------------------------------------
-    # Determine anomaly status
-    # -----------------------------------------------------
-
-    if combined_score >= 60:
-
-        status = "ANOMALOUS PATTERN"
-
-        explanation = (
-            "The document shows noticeable visual "
-            "and layout deviation from the reference "
-            "dataset. Manual review is recommended."
+        result["explanation"] = (
+            "No valid reference documents "
+            "were available for ML analysis."
         )
 
-    elif combined_score >= 40:
+        return result
 
-        status = "REVIEW RECOMMENDED"
+
+    reference_count = (
+        len(reference_features)
+    )
+
+
+    # ========================================================
+    # CALCULATE DEVIATION
+    # ========================================================
+
+    deviation_score = (
+        calculate_deviation_score(
+
+            document_features,
+
+            reference_features
+
+        )
+    )
+
+
+    # ========================================================
+    # CALCULATE SIMILARITY
+    # ========================================================
+
+    reference_similarity = (
+        calculate_reference_similarity(
+
+            document_features,
+
+            reference_features
+
+        )
+    )
+
+
+    # ========================================================
+    # FINAL ANOMALY SCORE
+    # ========================================================
+
+    # Higher score = greater deviation
+
+    anomaly_score = deviation_score
+
+
+    # ========================================================
+    # DETERMINE STATUS
+    # ========================================================
+
+    if anomaly_score >= 60:
+
+        status = (
+            "ANOMALOUS PATTERN"
+        )
 
         explanation = (
-            "The document shows some deviation "
+
+            "The document shows noticeable "
+            "visual and layout deviation "
             "from the reference dataset. "
-            "Additional verification is recommended."
+            "Manual review is recommended."
         )
+
+
+    elif anomaly_score >= 40:
+
+        status = (
+            "REVIEW RECOMMENDED"
+        )
+
+        explanation = (
+
+            "The document shows some "
+            "visual and layout deviation "
+            "from the reference dataset. "
+            "Further review is recommended."
+        )
+
 
     else:
 
-        status = "NORMAL PATTERN"
-
-        explanation = (
-            "The document's visual and layout "
-            "features are broadly consistent with "
-            "the reference dataset."
+        status = (
+            "NORMAL PATTERN"
         )
 
-    # -----------------------------------------------------
-    # Final result
-    # -----------------------------------------------------
+        explanation = (
 
-    result.update({
+            "The document's visual and "
+            "layout features are broadly "
+            "consistent with the reference "
+            "dataset."
+        )
+
+
+    # ========================================================
+    # PREDICTION
+    # ========================================================
+
+    # 1 = pattern is accepted as normal
+    # -1 = strong anomaly
+
+    if anomaly_score >= 60:
+
+        prediction = -1
+
+    else:
+
+        prediction = 1
+
+
+    # ========================================================
+    # FINAL RESULT
+    # ========================================================
+
+    result = {
 
         "available": True,
 
-        "anomaly_score": combined_score,
+        "anomaly_score": anomaly_score,
 
-        "prediction": int(
-            prediction
-        ),
+        "prediction": prediction,
 
         "status": status,
 
+        "reference_count": reference_count,
+
+        "reference_similarity":
+            reference_similarity,
+
         "explanation": explanation
-    })
+
+    }
+
 
     return result

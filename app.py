@@ -188,32 +188,29 @@ def reference_file(filename):
 )
 def analyze():
 
-    # -------------------------------------------------
+    # =================================================
     # CHECK UPLOAD
-    # -------------------------------------------------
+    # =================================================
 
     if "document" not in request.files:
 
         return "No document uploaded"
 
-
     file = request.files["document"]
-
 
     if file.filename == "":
 
         return "No file selected"
 
 
-    # -------------------------------------------------
+    # =================================================
     # SAVE FILE
-    # -------------------------------------------------
+    # =================================================
 
     filepath = os.path.join(
         app.config["UPLOAD_FOLDER"],
         file.filename
     )
-
 
     file.save(filepath)
 
@@ -227,10 +224,18 @@ def analyze():
     )
 
 
+    # =================================================
+    # EXTRACT DETAILS
+    # =================================================
+
     details = extract_details(
         text
     )
 
+
+    # =================================================
+    # BASIC VERIFICATION
+    # =================================================
 
     (
         checks,
@@ -260,9 +265,7 @@ def analyze():
         REFERENCE_FOLDER
     )
 
-
     similarity_score = None
-
 
     if authenticity_info:
 
@@ -274,7 +277,7 @@ def analyze():
 
 
     # =================================================
-    # ML ANALYSIS
+    # MACHINE LEARNING ANALYSIS
     # =================================================
 
     ml_result = analyze_with_ml(
@@ -297,8 +300,7 @@ def analyze():
     # =================================================
 
     academic_result = analyze_academic_consistency(
-        text,
-        details
+        text
     )
 
 
@@ -412,7 +414,6 @@ def analyze():
 
     reference_filename = None
 
-
     if authenticity_info:
 
         reference_filename = (
@@ -500,7 +501,7 @@ def analyze():
 
 
     # =================================================
-    # URLS
+    # FILE URLS
     # =================================================
 
     uploaded_url = (
@@ -528,6 +529,11 @@ def analyze():
 
         "result.html",
 
+
+        # ---------------------------------------------
+        # BASIC DOCUMENT DATA
+        # ---------------------------------------------
+
         filename=file.filename,
 
         text=text,
@@ -536,9 +542,23 @@ def analyze():
 
         checks=checks,
 
+
+        # ---------------------------------------------
+        # BASIC VERIFICATION
+        # ---------------------------------------------
+
         score=verification_score,
 
+        verification_score=verification_score,
+
         verification_status=verification_status,
+
+
+        # ---------------------------------------------
+        # FINAL RISK RESULT
+        # ---------------------------------------------
+
+        risk_result=risk_result,
 
         status=risk_result[
             "status"
@@ -548,22 +568,60 @@ def analyze():
             "overall_score"
         ],
 
-        image_info=image_info,
 
-        authenticity_info=authenticity_info,
+        # ---------------------------------------------
+        # IMAGE INFORMATION
+        # ---------------------------------------------
+
+        image_info=image_info,
 
         quality_score=risk_result[
             "quality_score"
         ],
 
+
+        # ---------------------------------------------
+        # REFERENCE / AUTHENTICITY
+        # ---------------------------------------------
+
+        authenticity_info=authenticity_info,
+
+        similarity_score=similarity_score,
+
+        reference_filename=reference_filename,
+
+
+        # ---------------------------------------------
+        # RISK EXPLANATION
+        # ---------------------------------------------
+
         risk_explanation=risk_explanation,
-        risk_result = risk_result,
+
+
+        # ---------------------------------------------
+        # ML
+        # ---------------------------------------------
 
         ml_result=ml_result,
 
+
+        # ---------------------------------------------
+        # TAMPERING
+        # ---------------------------------------------
+
         tampering_result=tampering_result,
 
+
+        # ---------------------------------------------
+        # ACADEMIC CONSISTENCY
+        # ---------------------------------------------
+
         academic_result=academic_result,
+
+
+        # ---------------------------------------------
+        # SCORE COMPONENTS
+        # ---------------------------------------------
 
         verification_component=(
             verification_component
@@ -581,11 +639,14 @@ def analyze():
             quality_component
         ),
 
+
+        # ---------------------------------------------
+        # URLS
+        # ---------------------------------------------
+
         uploaded_url=uploaded_url,
 
-        reference_url=reference_url,
-
-        reference_filename=reference_filename
+        reference_url=reference_url
     )
 
 
@@ -632,8 +693,9 @@ def history():
 # DOWNLOAD REPORT
 # =====================================================
 
-@app.route("/download-report")
-def download_report():
+@app.route("/download_report/<filename>")
+@app.route("/report/<filename>")
+def download_report(filename):
 
     filename = request.args.get(
         "filename",
@@ -691,10 +753,13 @@ def download_report():
     )
 
 
+    # =================================================
+    # REPORT FILE NAME
+    # =================================================
+
     safe_name = os.path.splitext(
         filename
     )[0]
-
 
     report_filename = (
         safe_name
@@ -728,6 +793,10 @@ def download_report():
         styles["BodyText"]
     )
 
+
+    # =================================================
+    # CREATE PDF
+    # =================================================
 
     document = SimpleDocTemplate(
 
@@ -1098,8 +1167,10 @@ def download_report():
         "This report is generated by an "
         "AI-assisted document analysis prototype. "
         "The system uses OCR extraction, visual "
-        "comparison, image quality analysis and "
-        "machine-learning pattern analysis. "
+        "comparison, image quality analysis, "
+        "machine-learning pattern analysis, "
+        "academic consistency checks and "
+        "tampering indicators. "
         "An anomaly score or verification score "
         "does not independently prove that a "
         "document is fraudulent. Final authenticity "
@@ -1118,6 +1189,10 @@ def download_report():
         )
     )
 
+
+    # =================================================
+    # BUILD PDF
+    # =================================================
 
     document.build(
         elements
