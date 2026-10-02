@@ -1,1761 +1,1324 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>
-        Verification Result | Academic Authenticity Validator
+        Verification Result
     </title>
 
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
     <style>
-        * {
-            box-sizing: border-box;
-        }
+
+        /* =====================================================
+           PAGE
+        ===================================================== */
 
         body {
             margin: 0;
-            font-family: Arial, Helvetica, sans-serif;
-            background: linear-gradient(135deg, #eef4ff, #f8fbff);
-            color: #1f2937;
+            font-family: Arial, sans-serif;
         }
 
-        /* ================= HEADER ================= */
-
-        .header {
-            background: linear-gradient(135deg, #0f172a, #1d4ed8);
-            color: white;
-            padding: 25px 40px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.12);
-        }
-
-        .header h1 {
-            margin: 0;
-            font-size: 28px;
-        }
-
-        .header p {
-            margin: 7px 0 0;
-            opacity: 0.85;
-            font-size: 14px;
-        }
-
-        /* ================= MAIN ================= */
-
-        .container {
+        .result-container {
             width: 92%;
-            max-width: 1250px;
-            margin: 30px auto 60px;
+            max-width: 1200px;
+            margin: 40px auto;
         }
 
-        /* ================= SCORE ================= */
-
-        .score-card {
-            background: white;
-            border-radius: 18px;
-            padding: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 30px;
-            box-shadow: 0 8px 30px rgba(15,23,42,0.08);
-            margin-bottom: 25px;
-        }
-
-        .score-info {
-            flex: 1;
-        }
-
-        .score-info h2 {
-            margin-top: 0;
-            font-size: 24px;
-        }
-
-        .score-info p {
-            color: #64748b;
-            line-height: 1.6;
-        }
-
-        .score-circle {
-            width: 170px;
-            height: 170px;
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-
-            background:
-                conic-gradient(
-                    #2563eb {{ overall_score }}%,
-                    #e5e7eb {{ overall_score }}%
-                );
-
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .score-circle::before {
-            content: "";
-            position: absolute;
-            width: 130px;
-            height: 130px;
-            background: white;
-            border-radius: 50%;
-        }
-
-        .score-number {
-            position: relative;
-            font-size: 32px;
-            font-weight: bold;
-            color: #1d4ed8;
-        }
-
-        .score-label {
-            position: relative;
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        /* ================= STATUS ================= */
-
-        .status {
-            display: inline-block;
-            padding: 8px 15px;
-            border-radius: 30px;
-            font-size: 13px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        .status.low {
-            background: #dcfce7;
-            color: #166534;
-        }
-
-        .status.review {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .status.suspicious {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        /* ================= GRID ================= */
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 22px;
-            margin-bottom: 22px;
-        }
-
-        .card {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 6px 25px rgba(15,23,42,0.07);
-        }
-
-        .card.full {
-            grid-column: 1 / -1;
-        }
-
-        .card h2 {
-            margin-top: 0;
-            font-size: 20px;
-            color: #0f172a;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 12px;
-            margin-bottom: 20px;
-        }
-
-        /* ================= SCORE BARS ================= */
-
-        .metric {
-            margin-bottom: 18px;
-        }
-
-        .metric-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 7px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-
-        .bar {
-            height: 10px;
-            background: #e5e7eb;
-            border-radius: 20px;
-            overflow: hidden;
-        }
-
-        .bar-fill {
-            height: 100%;
-            border-radius: 20px;
-            background: linear-gradient(90deg, #2563eb, #60a5fa);
-        }
-
-        /* ================= INFORMATION ================= */
-
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .info-table tr {
-            border-bottom: 1px solid #eef2f7;
-        }
-
-        .info-table td {
-            padding: 12px 5px;
-            vertical-align: top;
-        }
-
-        .info-table td:first-child {
-            width: 40%;
-            font-weight: bold;
-            color: #475569;
-        }
-
-        /* ================= CHECKS ================= */
-
-        .check {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 13px 15px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            background: #f8fafc;
-        }
-
-        .check-name {
-            font-weight: 600;
-        }
-
-        .pass {
-            color: #15803d;
-            font-weight: bold;
-        }
-
-        .fail {
-            color: #dc2626;
-            font-weight: bold;
-        }
-
-        /* ================= ML ================= */
-
-        .ml-box {
-            background: linear-gradient(135deg, #eff6ff, #f8fafc);
-            border: 1px solid #dbeafe;
-            border-radius: 14px;
-            padding: 20px;
-        }
-
-        .ml-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .ml-stat {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
+        .page-title {
             text-align: center;
+            margin-bottom: 30px;
         }
 
-        .ml-stat strong {
-            display: block;
-            font-size: 21px;
-            color: #1d4ed8;
-            margin-bottom: 5px;
-        }
-
-        .ml-stat span {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        /* ================= TAMPERING ================= */
-
-        .tampering-card {
-            border: 2px solid #e2e8f0;
-        }
-
-        .tampering-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-
-        .tampering-score {
-            width: 125px;
-            height: 125px;
-            border-radius: 50%;
-
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-
-            background:
-                conic-gradient(
-                    #f59e0b {{ tampering_result.tampering_score }}%,
-                    #e5e7eb {{ tampering_result.tampering_score }}%
-                );
-
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .tampering-score::before {
-            content: "";
-            position: absolute;
-            width: 92px;
-            height: 92px;
-            border-radius: 50%;
-            background: white;
-        }
-
-        .tampering-score strong {
-            position: relative;
-            font-size: 22px;
-            color: #b45309;
-        }
-
-        .tampering-score span {
-            position: relative;
-            font-size: 11px;
-            color: #64748b;
-        }
-
-        .tampering-status {
-            display: inline-block;
-            padding: 8px 14px;
-            border-radius: 20px;
-            background: #fff7ed;
-            color: #c2410c;
-            font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 10px;
-        }
-
-        .indicator {
-            background: #fff7ed;
-            border-left: 4px solid #f59e0b;
-            padding: 12px 15px;
+        .page-title h1 {
             margin-bottom: 8px;
-            border-radius: 5px;
-            color: #78350f;
-            font-size: 14px;
         }
 
-        .tampering-note {
-            margin-top: 15px;
-            padding: 14px;
-            background: #f8fafc;
-            border-radius: 10px;
-            color: #475569;
-            line-height: 1.6;
-            font-size: 14px;
+        .page-title p {
+            opacity: 0.7;
         }
 
-        /* ================= ACADEMIC ================= */
+        /* =====================================================
+           CARDS
+        ===================================================== */
 
-        .academic-box {
-            background: linear-gradient(135deg, #f0fdf4, #f8fafc);
-            border: 1px solid #bbf7d0;
-            border-radius: 14px;
-            padding: 20px;
+        .result-card {
+            padding: 25px;
+            margin-bottom: 22px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
         }
 
-        .academic-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .academic-stat {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-        }
-
-        .academic-stat strong {
-            display: block;
-            font-size: 21px;
-            color: #15803d;
-            margin-bottom: 5px;
-        }
-
-        .academic-stat span {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        .academic-check {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: white;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-top: 9px;
-        }
-
-        .academic-consistent {
-            color: #15803d;
-            font-weight: bold;
-        }
-
-        .academic-warning {
-            color: #b45309;
-            font-weight: bold;
-        }
-
-        .academic-suspicious {
-            color: #dc2626;
-            font-weight: bold;
-        }
-
-        /* ================= DOCUMENT COMPARISON ================= */
-
-        .comparison {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .document-preview {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            overflow: hidden;
-            background: #f8fafc;
-        }
-
-        .document-preview h3 {
-            padding: 12px 15px;
-            margin: 0;
-            background: #f1f5f9;
-            font-size: 14px;
-        }
-
-        .document-preview iframe {
-            width: 100%;
-            height: 550px;
-            border: 0;
-            display: block;
-        }
-
-        .no-reference {
-            padding: 40px;
-            text-align: center;
-            color: #64748b;
-        }
-
-        /* ================= IMAGE QUALITY ================= */
-
-        .quality-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-        }
-
-        .quality-item {
-            background: #f8fafc;
-            padding: 18px;
-            border-radius: 10px;
-            text-align: center;
-        }
-
-        .quality-item strong {
-            display: block;
+        .card-title {
             font-size: 20px;
-            color: #1d4ed8;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        /* =====================================================
+           OVERALL SCORE
+        ===================================================== */
+
+        .overall-card {
+            text-align: center;
+        }
+
+        .overall-score {
+            font-size: 60px;
+            font-weight: 800;
+            margin: 15px 0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 700;
+        }
+
+        /* =====================================================
+           DOCUMENT TYPE
+        ===================================================== */
+
+        .document-type-box {
+            display: flex;
+            align-items: center;
+            gap: 22px;
+            padding: 22px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .document-type-icon {
+            font-size: 48px;
+            min-width: 65px;
+            text-align: center;
+        }
+
+        .document-type-label {
+            font-size: 13px;
+            opacity: 0.7;
             margin-bottom: 5px;
         }
 
-        .quality-item span {
-            font-size: 12px;
-            color: #64748b;
-        }
-
-        /* ================= OCR ================= */
-
-        .ocr-text {
-            background: #0f172a;
-            color: #e2e8f0;
-            padding: 18px;
-            border-radius: 10px;
-            max-height: 400px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            font-family: Consolas, monospace;
-            font-size: 13px;
-            line-height: 1.6;
-        }
-
-        /* ================= RISK ================= */
-
-        .reason {
-            padding: 12px 15px;
-            background: #f8fafc;
-            border-left: 4px solid #2563eb;
-            margin-bottom: 9px;
-            border-radius: 5px;
-            color: #475569;
-        }
-
-        .summary-box {
-            padding: 16px;
-            background: #eff6ff;
-            border: 1px solid #dbeafe;
-            border-radius: 10px;
-            color: #1e3a8a;
-            line-height: 1.6;
+        .document-type-name {
+            font-size: 27px;
+            font-weight: 800;
             margin-bottom: 15px;
         }
 
-        /* ================= BUTTONS ================= */
+        .document-confidence {
+            display: flex;
+            justify-content: space-between;
+            max-width: 500px;
+            margin-bottom: 8px;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            max-width: 500px;
+            height: 10px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 10px;
+            background: #4caf50;
+        }
+
+        .matched-evidence {
+            margin-top: 18px;
+            line-height: 2.2;
+        }
+
+        .evidence-tag {
+            display: inline-block;
+            padding: 3px 9px;
+            margin: 3px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: rgba(76, 175, 80, 0.15);
+        }
+
+        /* =====================================================
+           GRID
+        ===================================================== */
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(220px, 1fr)
+            );
+            gap: 15px;
+        }
+
+        .info-item {
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .info-label {
+            font-size: 12px;
+            opacity: 0.65;
+            margin-bottom: 7px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        /* =====================================================
+           SCORE BARS
+        ===================================================== */
+
+        .score-row {
+            margin-bottom: 18px;
+        }
+
+        .score-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 7px;
+        }
+
+        .score-bar {
+            height: 9px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.12);
+        }
+
+        .score-fill {
+            height: 100%;
+            border-radius: 10px;
+        }
+
+        /* =====================================================
+           CHECKS
+        ===================================================== */
+
+        .check-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            padding: 13px 0;
+            border-bottom: 1px solid rgba(
+                128,
+                128,
+                128,
+                0.2
+            );
+        }
+
+        .check-item:last-child {
+            border-bottom: none;
+        }
+
+        /* =====================================================
+           ML / TAMPERING
+        ===================================================== */
+
+        .analysis-status {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .analysis-text {
+            line-height: 1.7;
+            opacity: 0.85;
+        }
+
+        /* =====================================================
+           OCR
+        ===================================================== */
+
+        .ocr-box {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 18px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.08);
+            white-space: pre-wrap;
+            line-height: 1.6;
+            font-family: monospace;
+        }
+
+        /* =====================================================
+           DOCUMENT COMPARISON
+        ===================================================== */
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(
+                auto-fit,
+                minmax(280px, 1fr)
+            );
+            gap: 20px;
+        }
+
+        .comparison-item {
+            padding: 18px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison-item img {
+            width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        /* =====================================================
+           ACTION BUTTONS
+        ===================================================== */
 
         .actions {
             display: flex;
-            justify-content: center;
             flex-wrap: wrap;
+            justify-content: center;
             gap: 12px;
             margin-top: 30px;
         }
 
-        .btn {
+        .action-button {
+            display: inline-block;
+            padding: 13px 22px;
+            border-radius: 10px;
             text-decoration: none;
-            padding: 12px 20px;
-            border-radius: 9px;
-            font-size: 14px;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-
-        .btn-primary {
-            background: #2563eb;
+            font-weight: 700;
+            background: #1976d2;
             color: white;
         }
 
-        .btn-primary:hover {
-            background: #1d4ed8;
+        .action-button:hover {
+            opacity: 0.85;
         }
 
-        .btn-secondary {
-            background: white;
-            color: #1d4ed8;
-            border: 1px solid #bfdbfe;
-        }
-
-        .btn-secondary:hover {
-            background: #eff6ff;
-        }
-
-        /* ================= DISCLAIMER ================= */
+        /* =====================================================
+           DISCLAIMER
+        ===================================================== */
 
         .disclaimer {
-            margin-top: 25px;
-            padding: 18px;
-            border-radius: 12px;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            color: #78350f;
             font-size: 13px;
             line-height: 1.6;
+            opacity: 0.7;
         }
 
-        /* ================= RESPONSIVE ================= */
+        /* =====================================================
+           MOBILE
+        ===================================================== */
 
-        @media (max-width: 900px) {
+        @media (max-width: 650px) {
 
-            .grid {
-                grid-template-columns: 1fr;
-            }
-
-            .card.full {
-                grid-column: auto;
-            }
-
-            .comparison {
-                grid-template-columns: 1fr;
-            }
-
-            .ml-grid,
-            .academic-grid,
-            .quality-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .score-card {
-                flex-direction: column;
-                text-align: center;
-            }
-        }
-
-        @media (max-width: 600px) {
-
-            .header {
-                padding: 20px;
-            }
-
-            .header h1 {
-                font-size: 22px;
-            }
-
-            .container {
+            .result-container {
                 width: 94%;
-                margin-top: 20px;
+                margin: 20px auto;
             }
 
-            .card,
-            .score-card {
+            .result-card {
                 padding: 18px;
             }
 
-            .tampering-top {
+            .document-type-box {
                 flex-direction: column;
                 align-items: flex-start;
             }
 
-            .score-circle {
-                width: 145px;
-                height: 145px;
+            .overall-score {
+                font-size: 45px;
             }
 
-            .score-circle::before {
-                width: 110px;
-                height: 110px;
+            .check-item {
+                flex-direction: column;
+                gap: 5px;
             }
+
         }
+
     </style>
+
 </head>
+
 
 <body>
 
-<!-- =====================================================
-     HEADER
-====================================================== -->
+<div class="result-container">
 
-<header class="header">
 
-    <h1>
-        🎓 Academic Authenticity Validator
-    </h1>
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
 
-    <p>
-        AI-assisted academic document verification and analysis
-    </p>
+    <div class="page-title">
 
-</header>
+        <h1>
+            📄 Academic Document Verification
+        </h1>
 
-
-<!-- =====================================================
-     MAIN
-====================================================== -->
-
-<main class="container">
-
-
-    <!-- =================================================
-         OVERALL SCORE
-    ================================================== -->
-
-    <section class="score-card">
-
-        <div class="score-info">
-
-            <h2>
-                Verification Result
-            </h2>
-
-            <p>
-                The uploaded academic document has been
-                analyzed using OCR verification, visual
-                comparison, image-quality analysis,
-                machine-learning pattern detection,
-                tampering indicators, and academic
-                consistency checks.
-            </p>
-
-            {% if status == "LOW RISK" %}
-
-                <span class="status low">
-                    {{ status }}
-                </span>
-
-            {% elif status == "NEEDS REVIEW" %}
-
-                <span class="status review">
-                    {{ status }}
-                </span>
-
-            {% else %}
-
-                <span class="status suspicious">
-                    {{ status }}
-                </span>
-
-            {% endif %}
-
-        </div>
-
-
-        <div class="score-circle">
-
-            <div class="score-number">
-                {{ overall_score }}%
-            </div>
-
-            <div class="score-label">
-                Overall Score
-            </div>
-
-        </div>
-
-    </section>
-
-
-
-    <!-- =================================================
-         SCORE BREAKDOWN
-    ================================================== -->
-
-    <div class="grid">
-
-        <section class="card">
-
-            <h2>
-                📊 Verification Breakdown
-            </h2>
-
-
-            <div class="metric">
-
-                <div class="metric-header">
-
-                    <span>
-                        OCR Verification
-                    </span>
-
-                    <span>
-                        {{ verification_score }}%
-                    </span>
-
-                </div>
-
-                <div class="bar">
-
-                    <div
-                        class="bar-fill"
-                        style="width: {{ verification_score }}%;"
-                    ></div>
-
-                </div>
-
-            </div>
-
-
-            <div class="metric">
-
-                <div class="metric-header">
-
-                    <span>
-                        Visual Similarity
-                    </span>
-
-                    <span>
-
-                        {% if similarity_score is not none %}
-                            {{ similarity_score }}%
-                        {% else %}
-                            N/A
-                        {% endif %}
-
-                    </span>
-
-                </div>
-
-                <div class="bar">
-
-                    <div
-                        class="bar-fill"
-                        style="width:
-                        {% if similarity_score is not none %}
-                            {{ similarity_score }}%
-                        {% else %}
-                            0%
-                        {% endif %};"
-                    ></div>
-
-                </div>
-
-            </div>
-
-
-            <div class="metric">
-
-                <div class="metric-header">
-
-                    <span>
-                        ML Pattern Consistency
-                    </span>
-
-                    <span>
-
-                        {% if ml_result.available %}
-                            {{ 100 - ml_result.anomaly_score }}%
-                        {% else %}
-                            N/A
-                        {% endif %}
-
-                    </span>
-
-                </div>
-
-                <div class="bar">
-
-                    <div
-                        class="bar-fill"
-                        style="width:
-                        {% if ml_result.available %}
-                            {{ 100 - ml_result.anomaly_score }}%
-                        {% else %}
-                            0%
-                        {% endif %};"
-                    ></div>
-
-                </div>
-
-            </div>
-
-
-            <div class="metric">
-
-                <div class="metric-header">
-
-                    <span>
-                        Image Quality
-                    </span>
-
-                    <span>
-                        {{ risk_result.quality_score }}%
-                    </span>
-
-                </div>
-
-                <div class="bar">
-
-                    <div
-                        class="bar-fill"
-                        style="width: {{ risk_result.quality_score }}%;"
-                    ></div>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-
-        <!-- =================================================
-             EXTRACTED INFORMATION
-        ================================================== -->
-
-        <section class="card">
-
-            <h2>
-                👤 Extracted Information
-            </h2>
-
-            <table class="info-table">
-
-                <tr>
-
-                    <td>
-                        Candidate Name
-                    </td>
-
-                    <td>
-                        {{ details.candidate_name or "Not detected" }}
-                    </td>
-
-                </tr>
-
-
-                <tr>
-
-                    <td>
-                        Register Number
-                    </td>
-
-                    <td>
-                        {{ details.register_number or "Not detected" }}
-                    </td>
-
-                </tr>
-
-
-                <tr>
-
-                    <td>
-                        Date of Birth
-                    </td>
-
-                    <td>
-                        {{ details.date_of_birth or "Not detected" }}
-                    </td>
-
-                </tr>
-
-
-                <tr>
-
-                    <td>
-                        Uploaded File
-                    </td>
-
-                    <td>
-                        {{ filename }}
-                    </td>
-
-                </tr>
-
-            </table>
-
-        </section>
+        <p>
+            Automated authenticity and consistency analysis
+        </p>
 
     </div>
 
 
+    <!-- =====================================================
+         OVERALL SCORE
+    ====================================================== -->
 
-    <!-- =================================================
-         VERIFICATION CHECKS
-    ================================================== -->
+    <div class="result-card overall-card">
 
-    <section class="card full">
+        <div class="card-title">
+            Overall Verification Result
+        </div>
 
-        <h2>
-            ✅ Verification Checks
-        </h2>
+        <div class="overall-score">
+            {{ "%.2f"|format(overall_score|float) }}%
+        </div>
+
+        <div class="status-badge">
+            {{ status }}
+        </div>
+
+    </div>
 
 
-        {% for name, passed in checks.items() %}
+    <!-- =====================================================
+         DOCUMENT TYPE
+    ====================================================== -->
 
-            <div class="check">
+    <div class="result-card">
 
-                <span class="check-name">
-                    {{ name }}
+        <div class="card-title">
+            📄 Document Type Detection
+        </div>
+
+        <div class="document-type-box">
+
+            <div class="document-type-icon">
+                📑
+            </div>
+
+            <div style="width:100%;">
+
+                <div class="document-type-label">
+                    Detected Document
+                </div>
+
+                <div class="document-type-name">
+
+                    {{ document_type
+                        .replace('_', ' ')
+                        .title() }}
+
+                </div>
+
+                <div class="document-confidence">
+
+                    <span>
+                        Classification Confidence
+                    </span>
+
+                    <strong>
+                        {{ document_confidence }}%
+                    </strong>
+
+                </div>
+
+                <div class="confidence-bar">
+
+                    <div
+                        class="confidence-fill"
+                        style="width: {{ document_confidence }}%;">
+                    </div>
+
+                </div>
+
+
+                {% if document_result.matched_keywords %}
+
+                <div class="matched-evidence">
+
+                    <strong>
+                        Detection Evidence:
+                    </strong>
+
+                    {% for keyword in document_result.matched_keywords %}
+
+                        <span class="evidence-tag">
+                            {{ keyword }}
+                        </span>
+
+                    {% endfor %}
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         VERIFICATION BREAKDOWN
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            📊 Verification Breakdown
+        </div>
+
+
+        <div class="score-row">
+
+            <div class="score-header">
+
+                <span>
+                    OCR / Information Verification
                 </span>
 
-
-                {% if passed %}
-
-                    <span class="pass">
-                        ✓ VERIFIED
-                    </span>
-
-                {% else %}
-
-                    <span class="fail">
-                        ✕ NOT VERIFIED
-                    </span>
-
-                {% endif %}
-
-            </div>
-
-        {% endfor %}
-
-    </section>
-
-
-
-    <br>
-
-
-
-    <!-- =================================================
-         ACADEMIC CONSISTENCY
-    ================================================== -->
-
-    <section class="card full">
-
-        <h2>
-            📚 Academic Consistency Analysis
-        </h2>
-
-
-        {% if academic_result and academic_result.available %}
-
-            <div class="academic-box">
-
-                <p>
-                    {{ academic_result.explanation }}
-                </p>
-
-
-                <div class="academic-grid">
-
-                    <div class="academic-stat">
-
-                        <strong>
-                            {{ academic_result.overall_score }}%
-                        </strong>
-
-                        <span>
-                            Consistency Score
-                        </span>
-
-                    </div>
-
-
-                    <div class="academic-stat">
-
-                        <strong>
-                            {{ academic_result.status }}
-                        </strong>
-
-                        <span>
-                            Academic Assessment
-                        </span>
-
-                    </div>
-
-
-                    <div class="academic-stat">
-
-                        <strong>
-                            {{ academic_result.suspicious_count }}
-                        </strong>
-
-                        <span>
-                            Suspicious Indicators
-                        </span>
-
-                    </div>
-
-                </div>
-
-
-                {% if academic_result.checks %}
-
-                    <div style="margin-top:18px;">
-
-                        {% for key, value in academic_result.checks.items() %}
-
-                            <div class="academic-check">
-
-                                <span>
-                                    {{ key|replace("_", " ")|title }}
-                                </span>
-
-
-                                {% if value.status == "CONSISTENT"
-                                   or value.status == "VALID" %}
-
-                                    <span class="academic-consistent">
-                                        ✓ {{ value.status }}
-                                    </span>
-
-                                {% elif value.status == "REVIEW RECOMMENDED" %}
-
-                                    <span class="academic-warning">
-                                        ⚠ {{ value.status }}
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="academic-suspicious">
-                                        ✕ {{ value.status }}
-                                    </span>
-
-                                {% endif %}
-
-                            </div>
-
-                        {% endfor %}
-
-                    </div>
-
-                {% endif %}
-
-
-                {% if academic_result.suspicious_indicators %}
-
-                    <div style="margin-top:18px;">
-
-                        <strong>
-                            Detected Indicators
-                        </strong>
-
-                        {% for indicator in academic_result.suspicious_indicators %}
-
-                            <div class="indicator">
-                                ⚠ {{ indicator }}
-                            </div>
-
-                        {% endfor %}
-
-                    </div>
-
-                {% endif %}
-
-
-                <div class="tampering-note">
-
-                    <strong>
-                        Important:
-                    </strong>
-
-                    Academic consistency checks validate
-                    extracted academic information and
-                    mathematical or formatting patterns.
-                    They do not independently prove that
-                    a document is authentic or fraudulent.
-
-                </div>
-
-            </div>
-
-        {% else %}
-
-            <div class="tampering-note">
-
-                Academic consistency analysis could not
-                be completed for this document.
-
-            </div>
-
-        {% endif %}
-
-    </section>
-
-
-
-    <br>
-
-
-
-    <!-- =================================================
-         TAMPERING ANALYSIS
-    ================================================== -->
-
-    <section class="card full tampering-card">
-
-        <h2>
-            🔍 Tampering Analysis
-        </h2>
-
-
-        {% if tampering_result.available %}
-
-            <div class="tampering-top">
-
-                <div style="flex:1;">
-
-                    <span class="tampering-status">
-                        {{ tampering_result.status }}
-                    </span>
-
-                    <p style="line-height:1.6;color:#475569;">
-
-                        {{ tampering_result.explanation }}
-
-                    </p>
-
-                </div>
-
-
-                <div class="tampering-score">
-
-                    <strong>
-                        {{ tampering_result.tampering_score }}
-                    </strong>
-
-                    <span>
-                        Score
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            <div class="quality-grid">
-
-                <div class="quality-item">
-
-                    <strong>
-                        {{ tampering_result.total_regions }}
-                    </strong>
-
-                    <span>
-                        Regions Analyzed
-                    </span>
-
-                </div>
-
-
-                <div class="quality-item">
-
-                    <strong>
-                        {{ tampering_result.texture_mean }}
-                    </strong>
-
-                    <span>
-                        Texture Mean
-                    </span>
-
-                </div>
-
-
-                <div class="quality-item">
-
-                    <strong>
-                        {{ tampering_result.edge_density }}
-                    </strong>
-
-                    <span>
-                        Edge Density
-                    </span>
-
-                </div>
-
-            </div>
-
-
-            {% if tampering_result.indicators %}
-
-                <div style="margin-top:20px;">
-
-                    <h3>
-                        Detected Indicators
-                    </h3>
-
-                    {% for indicator in tampering_result.indicators %}
-
-                        <div class="indicator">
-
-                            ⚠ {{ indicator }}
-
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-            {% endif %}
-
-
-            {% if tampering_result.suspicious_regions %}
-
-                <div style="margin-top:20px;">
-
-                    <h3>
-                        Suspicious Regions
-                    </h3>
-
-                    {% for region in tampering_result.suspicious_regions %}
-
-                        <div class="indicator">
-
-                            ⚠ {{ region }}
-
-                        </div>
-
-                    {% endfor %}
-
-                </div>
-
-            {% endif %}
-
-
-            <div class="tampering-note">
-
                 <strong>
-                    Important:
+                    {{ "%.2f"|format(verification_score|float) }}%
                 </strong>
 
-                A tampering score does not independently
-                prove that a document has been altered.
-                Visual differences can occur because of
-                scanning quality, printing, compression,
-                document templates, or legitimate formatting.
-                The result should be treated as a signal for
-                further inspection.
-
             </div>
 
-        {% else %}
+            <div class="score-bar">
 
-            <div class="tampering-note">
-
-                Tampering analysis could not be completed
-                for this document.
-
-            </div>
-
-        {% endif %}
-
-    </section>
-
-
-
-    <br>
-
-
-
-    <!-- =================================================
-         MACHINE LEARNING ANALYSIS
-    ================================================== -->
-
-    <section class="card full">
-
-        <h2>
-            🤖 Machine Learning Analysis
-        </h2>
-
-
-        {% if ml_result.available %}
-
-            <div class="ml-box">
-
-                <p>
-                    {{ ml_result.explanation }}
-                </p>
-
-
-                <div class="ml-grid">
-
-
-                    <div class="ml-stat">
-
-                        <strong>
-                            {{ ml_result.anomaly_score }}
-                        </strong>
-
-                        <span>
-                            Anomaly Score
-                        </span>
-
-                    </div>
-
-
-                    <div class="ml-stat">
-
-                        <strong>
-                            {{ ml_result.status }}
-                        </strong>
-
-                        <span>
-                            ML Assessment
-                        </span>
-
-                    </div>
-
-
-                    <div class="ml-stat">
-
-                        <strong>
-                            {{ ml_result.reference_count }}
-                        </strong>
-
-                        <span>
-                            Reference Documents
-                        </span>
-
-                    </div>
-
-
+                <div
+                    class="score-fill"
+                    style="
+                        width: {{ verification_score }}%;
+                        background: #4caf50;
+                    ">
                 </div>
-
-
-                <p style="
-                    margin-top:18px;
-                    font-size:13px;
-                    color:#64748b;
-                ">
-
-                    The ML model identifies visual and
-                    structural patterns that differ from
-                    the reference dataset. It does not
-                    independently establish document fraud
-                    or authenticity.
-
-                </p>
-
-            </div>
-
-        {% else %}
-
-            <div class="tampering-note">
-
-                Machine-learning analysis was not available
-                for this document.
-
-            </div>
-
-        {% endif %}
-
-    </section>
-
-
-
-    <br>
-
-
-
-    <!-- =================================================
-         DOCUMENT COMPARISON
-    ================================================== -->
-
-    <section class="card full">
-
-        <h2>
-            📄 Document Comparison
-        </h2>
-
-
-        <div class="comparison">
-
-
-            <!-- UPLOADED DOCUMENT -->
-
-            <div class="document-preview">
-
-                <h3>
-                    Uploaded Document
-                </h3>
-
-                <iframe
-                    src="{{ url_for('uploaded_file', filename=filename) }}"
-                    title="Uploaded Document"
-                ></iframe>
-
-            </div>
-
-
-
-            <!-- REFERENCE DOCUMENT -->
-
-            <div class="document-preview">
-
-                {% if reference_filename %}
-
-                    <h3>
-                        Best Matching Reference:
-                        {{ reference_filename }}
-                    </h3>
-
-                    <iframe
-                        src="{{ url_for(
-                            'reference_file',
-                            filename=reference_filename
-                        ) }}"
-                        title="Reference Document"
-                    ></iframe>
-
-                {% else %}
-
-                    <h3>
-                        Reference Document
-                    </h3>
-
-                    <div class="no-reference">
-
-                        No reference document was
-                        available for comparison.
-
-                    </div>
-
-                {% endif %}
 
             </div>
 
         </div>
 
 
-        <div style="
-            margin-top:20px;
-            padding:18px;
-            background:#f8fafc;
-            border-radius:12px;
-        ">
+        <div class="score-row">
 
-            <strong>
-                Visual Similarity:
-            </strong>
+            <div class="score-header">
 
-            {% if similarity_score is not none %}
+                <span>
+                    Visual Similarity
+                </span>
 
-                {{ similarity_score }}%
+                <strong>
+                    {{ "%.2f"|format(similarity_score|float) }}%
+                </strong>
 
-                {% if authenticity_info %}
+            </div>
 
-                    <span style="color:#64748b;">
+            <div class="score-bar">
 
-                        — {{ authenticity_info.status }}
+                <div
+                    class="score-fill"
+                    style="
+                        width: {{ similarity_score }}%;
+                        background: #2196f3;
+                    ">
+                </div>
 
-                    </span>
-
-                {% endif %}
-
-            {% else %}
-
-                Not available
-
-            {% endif %}
+            </div>
 
         </div>
 
-    </section>
 
+        <div class="score-row">
 
+            <div class="score-header">
 
-    <br>
-
-
-
-    <!-- =================================================
-         IMAGE QUALITY
-    ================================================== -->
-
-    <section class="card full">
-
-        <h2>
-            🖼️ Image Quality Analysis
-        </h2>
-
-
-        <div class="quality-grid">
-
-
-            <div class="quality-item">
+                <span>
+                    ML Pattern Consistency
+                </span>
 
                 <strong>
-                    {{ image_info.image_quality }}
+                    {{ "%.2f"|format(
+                        (100 - ml_result.anomaly_score)|float
+                    ) }}%
                 </strong>
+
+            </div>
+
+            <div class="score-bar">
+
+                <div
+                    class="score-fill"
+                    style="
+                        width: {{ 100 - ml_result.anomaly_score }}%;
+                        background: #9c27b0;
+                    ">
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <div class="score-row">
+
+            <div class="score-header">
 
                 <span>
                     Image Quality
                 </span>
 
-            </div>
-
-
-            <div class="quality-item">
-
                 <strong>
-                    {{ image_info.blur_score }}
+                    {{ quality_score }}%
                 </strong>
 
-                <span>
-                    Sharpness / Blur Score
-                </span>
-
             </div>
 
+            <div class="score-bar">
 
-            <div class="quality-item">
-
-                <strong>
-                    {{ image_info.width }} × {{ image_info.height }}
-                </strong>
-
-                <span>
-                    Resolution
-                </span>
+                <div
+                    class="score-fill"
+                    style="
+                        width: {{ quality_score }}%;
+                        background: #ff9800;
+                    ">
+                </div>
 
             </div>
-
 
         </div>
 
+    </div>
 
-        <div class="tampering-note">
 
-            Image quality analysis helps determine whether
-            the uploaded document is sufficiently clear
-            for OCR and visual processing.
+    <!-- =====================================================
+         EXTRACTED INFORMATION
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            👤 Extracted Information
+        </div>
+
+        <div class="info-grid">
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Candidate Name
+                </div>
+
+                <div class="info-value">
+
+                    {{ details.get(
+                        "candidate_name",
+                        "Not detected"
+                    ) }}
+
+                </div>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Register Number
+                </div>
+
+                <div class="info-value">
+
+                    {{ details.get(
+                        "register_number",
+                        "Not detected"
+                    ) }}
+
+                </div>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Date of Birth
+                </div>
+
+                <div class="info-value">
+
+                    {{ details.get(
+                        "date_of_birth",
+                        details.get(
+                            "dob",
+                            "Not detected"
+                        )
+                    ) }}
+
+                </div>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Document
+                </div>
+
+                <div class="info-value">
+                    {{ filename }}
+                </div>
+
+            </div>
 
         </div>
 
-    </section>
+    </div>
 
 
+    <!-- =====================================================
+         VERIFICATION CHECKS
+    ====================================================== -->
 
-    <br>
+    <div class="result-card">
 
+        <div class="card-title">
+            ✅ Verification Checks
+        </div>
 
+        {% if checks %}
 
-    <!-- =================================================
-         RISK ANALYSIS
-    ================================================== -->
+            {% for key, value in checks.items() %}
 
-    <section class="card full">
+            <div class="check-item">
 
-        <h2>
-            ⚠️ Risk Analysis
-        </h2>
-
-
-        {% if risk_explanation %}
-
-            <div class="summary-box">
+                <span>
+                    {{ key.replace('_', ' ').title() }}
+                </span>
 
                 <strong>
-                    Summary
+                    {{ value }}
                 </strong>
 
-                <br>
-
-                {{ risk_explanation.summary }}
-
             </div>
 
-
-            {% if risk_explanation.reasons %}
-
-                {% for reason in risk_explanation.reasons %}
-
-                    <div class="reason">
-
-                        {{ reason }}
-
-                    </div>
-
-                {% endfor %}
-
-            {% endif %}
-
-        {% endif %}
-
-    </section>
-
-
-
-    <br>
-
-
-
-    <!-- =================================================
-         OCR TEXT
-    ================================================== -->
-
-    <section class="card full">
-
-        <h2>
-            🔎 Extracted OCR Text
-        </h2>
-
-
-        {% if text %}
-
-            <div class="ocr-text">
-                {{ text }}
-            </div>
+            {% endfor %}
 
         {% else %}
 
-            <div class="tampering-note">
-
-                No OCR text was extracted from the document.
-
-            </div>
+            <p>
+                No verification checks available.
+            </p>
 
         {% endif %}
 
-    </section>
+    </div>
 
 
+    <!-- =====================================================
+         ACADEMIC CONSISTENCY
+    ====================================================== -->
 
-    <!-- =================================================
+    <div class="result-card">
+
+        <div class="card-title">
+            🎓 Academic Consistency
+        </div>
+
+        {% if academic_result %}
+
+            <div class="analysis-status">
+
+                {{ academic_result.get(
+                    "status",
+                    "UNKNOWN"
+                ) }}
+
+            </div>
+
+            <div class="info-grid">
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Consistency Score
+                    </div>
+
+                    <div class="info-value">
+
+                        {{ academic_result.get(
+                            "overall_score",
+                            0
+                        ) }}%
+
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Suspicious Indicators
+                    </div>
+
+                    <div class="info-value">
+
+                        {{ academic_result.get(
+                            "suspicious_count",
+                            0
+                        ) }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {% if academic_result.get("explanation") %}
+
+            <p class="analysis-text">
+
+                {{ academic_result.get(
+                    "explanation"
+                ) }}
+
+            </p>
+
+            {% endif %}
+
+        {% else %}
+
+            <p>
+                Academic consistency analysis unavailable.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         TAMPERING ANALYSIS
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            🔍 Tampering Analysis
+        </div>
+
+        {% if tampering_result %}
+
+            <div class="analysis-status">
+
+                {{ tampering_result.get(
+                    "status",
+                    "UNKNOWN"
+                ) }}
+
+            </div>
+
+            <div class="info-grid">
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Tampering Score
+                    </div>
+
+                    <div class="info-value">
+
+                        {{ tampering_result.get(
+                            "tampering_score",
+                            0
+                        ) }}%
+
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Suspicious Regions
+                    </div>
+
+                    <div class="info-value">
+
+                        {{ tampering_result.get(
+                            "suspicious_regions",
+                            0
+                        ) }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {% if tampering_result.get("explanation") %}
+
+            <p class="analysis-text">
+
+                {{ tampering_result.get(
+                    "explanation"
+                ) }}
+
+            </p>
+
+            {% endif %}
+
+        {% else %}
+
+            <p>
+                Tampering analysis unavailable.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         ML ANALYSIS
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            🤖 ML Pattern Analysis
+        </div>
+
+        {% if ml_result %}
+
+            <div class="analysis-status">
+
+                {{ ml_result.get(
+                    "status",
+                    "UNKNOWN"
+                ) }}
+
+            </div>
+
+
+            <div class="info-grid">
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Anomaly Score
+                    </div>
+
+                    <div class="info-value">
+
+                        {{ ml_result.get(
+                            "anomaly_score",
+                            0
+                        ) }}%
+
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Reference Documents
+                    </div>
+
+                    <div class="info-value">
+
+                        {{ ml_result.get(
+                            "reference_count",
+                            0
+                        ) }}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <p class="analysis-text">
+
+                {{ ml_result.get(
+                    "explanation",
+                    "No explanation available."
+                ) }}
+
+            </p>
+
+            <p class="analysis-text">
+
+                <strong>
+                    Important:
+                </strong>
+
+                The ML analysis identifies visual and
+                structural deviations from the reference
+                dataset. It does not independently prove
+                that a document is fake or genuine.
+
+            </p>
+
+        {% else %}
+
+            <p>
+                ML analysis unavailable.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         DOCUMENT COMPARISON
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            🔄 Document Comparison
+        </div>
+
+        <div class="comparison-grid">
+
+
+            <div class="comparison-item">
+
+                <h3>
+                    Uploaded Document
+                </h3>
+
+                {% if uploaded_url %}
+
+                    <img
+                        src="{{ uploaded_url }}"
+                        alt="Uploaded document"
+                    >
+
+                {% else %}
+
+                    <p>
+                        Preview unavailable.
+                    </p>
+
+                {% endif %}
+
+            </div>
+
+
+            <div class="comparison-item">
+
+                <h3>
+                    Reference Document
+                </h3>
+
+                {% if reference_url %}
+
+                    <img
+                        src="{{ reference_url }}"
+                        alt="Reference document"
+                    >
+
+                {% else %}
+
+                    <p>
+                        No reference document available.
+                    </p>
+
+                {% endif %}
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         IMAGE QUALITY
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            🖼️ Image Quality
+        </div>
+
+        <div class="info-grid">
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Quality
+                </div>
+
+                <div class="info-value">
+
+                    {{ image_info.get(
+                        "image_quality",
+                        "Unknown"
+                    ) }}
+
+                </div>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Blur Score
+                </div>
+
+                <div class="info-value">
+
+                    {{ image_info.get(
+                        "blur_score",
+                        0
+                    ) }}
+
+                </div>
+
+            </div>
+
+
+            <div class="info-item">
+
+                <div class="info-label">
+                    Resolution
+                </div>
+
+                <div class="info-value">
+
+                    {{ image_info.get(
+                        "width",
+                        0
+                    ) }}
+                    ×
+                    {{ image_info.get(
+                        "height",
+                        0
+                    ) }}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         RISK ANALYSIS
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            ⚠️ Risk Analysis
+        </div>
+
+        {% if risk_explanation %}
+
+            <p class="analysis-text">
+
+                {{ risk_explanation }}
+
+            </p>
+
+        {% elif risk_result %}
+
+            <p class="analysis-text">
+
+                {{ risk_result.get(
+                    "explanation",
+                    "Risk analysis completed."
+                ) }}
+
+            </p>
+
+        {% else %}
+
+            <p>
+                Risk analysis unavailable.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- =====================================================
+         OCR TEXT
+    ====================================================== -->
+
+    <div class="result-card">
+
+        <div class="card-title">
+            📝 Extracted OCR Text
+        </div>
+
+        <div class="ocr-box">
+
+            {{ text }}
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
          ACTION BUTTONS
-    ================================================== -->
+    ====================================================== -->
 
     <div class="actions">
 
-        <a
-            href="{{ url_for('download_report', filename=filename) }}"
-            class="btn"> Download Report
-            📄 Generate PDF Report
-        </a>
-
 
         <a
-            href="{{ url_for('history') }}"
-            class="btn btn-secondary"
-        >
-            📊 Verification History
-        </a>
-
-
-        <a
+            class="action-button"
             href="{{ url_for('upload') }}"
-            class="btn btn-secondary"
         >
             🔄 Verify Another Document
         </a>
 
 
         <a
-            href="{{ url_for('home') }}"
-            class="btn btn-secondary"
+            class="action-button"
+            href="{{ url_for('history') }}"
         >
-            🏠 Home
+            📚 Verification History
         </a>
 
+
+        <!-- IMPORTANT:
+             download_report uses QUERY PARAMETERS.
+             Do NOT use url_for('report', filename=filename).
+        -->
+
+        <a
+            class="action-button"
+            href="{{ url_for(
+                'download_report',
+
+                filename=filename,
+
+                candidate_name=details.get(
+                    'candidate_name',
+                    'Not detected'
+                ),
+
+                register_number=details.get(
+                    'register_number',
+                    'Not detected'
+                ),
+
+                dob=details.get(
+                    'date_of_birth',
+                    details.get(
+                        'dob',
+                        'Not detected'
+                    )
+                ),
+
+                overall_score=overall_score,
+
+                status=status,
+
+                verification_score=verification_score,
+
+                similarity=similarity_score,
+
+                ml_score=ml_result.get(
+                    'anomaly_score',
+                    0
+                ),
+
+                image_quality=image_info.get(
+                    'image_quality',
+                    'Unknown'
+                ),
+
+                reference=reference_filename or
+                    'Not available'
+            ) }}"
+        >
+            📥 Download Report
+        </a>
+
+
     </div>
 
 
-
-    <!-- =================================================
+    <!-- =====================================================
          DISCLAIMER
-    ================================================== -->
+    ====================================================== -->
 
-    <div class="disclaimer">
+    <div class="result-card">
 
-        <strong>
-            ⚠️ Important Disclaimer
-        </strong>
+        <div class="card-title">
+            ℹ️ Disclaimer
+        </div>
 
-        <br><br>
+        <p class="disclaimer">
 
-        This system is an AI-assisted academic document
-        analysis prototype. It combines OCR extraction,
-        visual comparison, image-quality analysis,
-        machine-learning pattern analysis, tampering
-        indicators, and academic consistency checks.
+            This system performs automated analysis of
+            academic documents using OCR, visual comparison,
+            academic consistency checks, image analysis and
+            anomaly detection.
 
-        <br><br>
+            <br><br>
 
-        An anomaly score, similarity score, tampering score,
-        or overall verification score does not independently
-        prove that a document is fraudulent or authentic.
+            The generated result is an automated screening
+            result and does not independently prove that a
+            document is genuine or fraudulent. Final
+            verification should be performed through the
+            appropriate educational institution or authorized
+            verification system.
 
-        <br><br>
-
-        Final authenticity decisions should be made using
-        authoritative institutional records and appropriate
-        manual verification.
+        </p>
 
     </div>
 
-</main>
+
+</div>
 
 </body>
+
 </html>

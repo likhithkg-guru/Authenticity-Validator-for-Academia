@@ -1,148 +1,125 @@
 import cv2
 import fitz
+import numpy as np
 import os
 
 
-# ==================================================
-# ANALYZE DOCUMENT IMAGE
-# ==================================================
+def pdf_to_image(pdf_path):
+    """
+    Convert the first page of a PDF into an OpenCV image.
+    """
 
-def analyze_image(file_path):
+    try:
+        document = fitz.open(pdf_path)
 
-    image = None
-
-
-    # ------------------------------------------
-    # PDF FILE
-    # ------------------------------------------
-
-    if file_path.lower().endswith(".pdf"):
-
-        try:
-
-            document = fitz.open(file_path)
-
-            if len(document) == 0:
-
-                return {
-                    "image_quality": "Unable to read document",
-                    "blur_score": 0,
-                    "width": 0,
-                    "height": 0
-                }
-
-            # First page
-            page = document[0]
-
-            # Convert PDF page to image
-            pix = page.get_pixmap(
-                matrix=fitz.Matrix(2, 2)
-            )
-
-            temp_path = os.path.join(
-                "static",
-                "uploads",
-                "temp_document.png"
-            )
-
-            pix.save(temp_path)
-
+        if len(document) == 0:
             document.close()
+            return None
 
-            # Read converted image
-            image = cv2.imread(
-                temp_path
-            )
+        page = document[0]
 
-        except Exception:
-
-            return {
-                "image_quality": "Unable to analyze",
-                "blur_score": 0,
-                "width": 0,
-                "height": 0
-            }
-
-
-    # ------------------------------------------
-    # IMAGE FILE
-    # ------------------------------------------
-
-    else:
-
-        image = cv2.imread(
-            file_path
+        pix = page.get_pixmap(
+            matrix=fitz.Matrix(2, 2)
         )
 
+        image = np.frombuffer(
+            pix.samples,
+            dtype=np.uint8
+        )
 
-    # ------------------------------------------
-    # IMAGE CHECK
-    # ------------------------------------------
+        channels = pix.n
+
+        image = image.reshape(
+            pix.height,
+            pix.width,
+            channels
+        )
+
+        if channels == 4:
+            image = cv2.cvtColor(
+                image,
+                cv2.COLOR_RGBA2BGR
+            )
+        else:
+            image = cv2.cvtColor(
+                image,
+                cv2.COLOR_RGB2BGR
+            )
+
+        document.close()
+
+        return image
+
+    except Exception as error:
+
+        print("PDF IMAGE ERROR:", error)
+
+        return None
+
+
+def analyze_image_quality(pdf_path):
+    """
+    Analyze the quality of the first page of a PDF.
+    """
+
+    image = pdf_to_image(pdf_path)
 
     if image is None:
 
         return {
-            "image_quality": "Unable to read image",
+            "image_quality": "Unknown",
             "blur_score": 0,
             "width": 0,
             "height": 0
         }
 
+    try:
 
-    # ------------------------------------------
-    # GRAYSCALE
-    # ------------------------------------------
+        height, width = image.shape[:2]
 
-    gray = cv2.cvtColor(
-        image,
-        cv2.COLOR_BGR2GRAY
-    )
+        gray = cv2.cvtColor(
+            image,
+            cv2.COLOR_BGR2GRAY
+        )
 
+        # Laplacian variance is used as a simple
+        # sharpness / blur indicator.
+        blur_score = cv2.Laplacian(
+            gray,
+            cv2.CV_64F
+        ).var()
 
-    # ------------------------------------------
-    # SHARPNESS
-    # ------------------------------------------
-
-    blur_score = cv2.Laplacian(
-        gray,
-        cv2.CV_64F
-    ).var()
-
-
-    # ------------------------------------------
-    # QUALITY
-    # ------------------------------------------
-
-    if blur_score >= 100:
-
-        quality = "Good"
-
-    elif blur_score >= 40:
-
-        quality = "Moderate"
-
-    else:
-
-        quality = "Low"
-
-
-    # ------------------------------------------
-    # RESOLUTION
-    # ------------------------------------------
-
-    height, width = image.shape[:2]
-
-
-    return {
-
-        "image_quality": quality,
-
-        "blur_score": round(
-            blur_score,
+        blur_score = round(
+            float(blur_score),
             2
-        ),
+        )
 
-        "width": width,
+        if blur_score >= 100:
 
-        "height": height
-    }
+            quality = "Good"
+
+        elif blur_score >= 40:
+
+            quality = "Moderate"
+
+        else:
+
+            quality = "Low"
+
+        return {
+            "image_quality": quality,
+            "blur_score": blur_score,
+            "width": width,
+            "height": height
+        }
+
+    except Exception as error:
+
+        print("IMAGE QUALITY ERROR:", error)
+
+        return {
+            "image_quality": "Unknown",
+            "blur_score": 0,
+            "width": 0,
+            "height": 0
+        }

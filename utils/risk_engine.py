@@ -1,139 +1,219 @@
+# ============================================================
+# RISK ENGINE
+# ============================================================
+
+
+def safe_float(value, default=0.0):
+    """
+    Safely convert a value into float.
+    Prevents errors when values arrive as strings.
+    """
+
+    try:
+
+        if value is None:
+            return float(default)
+
+        if isinstance(value, str):
+
+            value = value.strip()
+
+            if value.endswith("%"):
+                value = value[:-1]
+
+            if value == "":
+                return float(default)
+
+        return float(value)
+
+    except (
+        TypeError,
+        ValueError
+    ):
+
+        return float(default)
+
+
+# ============================================================
+# CALCULATE RISK SCORE
+# ============================================================
+
 def calculate_risk_score(
     verification_score,
     similarity_score,
     image_quality,
     ml_anomaly_score=None
 ):
-    """
-    Calculate overall document verification score.
 
-    Weights:
-    OCR Verification   = 30%
-    Visual Similarity  = 30%
-    ML Analysis        = 25%
-    Image Quality      = 15%
+    # --------------------------------------------------------
+    # Convert everything to numbers
+    # --------------------------------------------------------
 
-    Important:
-    ML anomaly score represents deviation from the
-    reference dataset. It does not independently prove
-    that a document is fraudulent.
-    """
+    verification_score = safe_float(
+        verification_score
+    )
 
-    # -----------------------------------------
-    # Image quality score
-    # -----------------------------------------
+    similarity_score = safe_float(
+        similarity_score
+    )
 
-    if image_quality == "Good":
-        quality_score = 100
+    ml_anomaly_score = safe_float(
+        ml_anomaly_score
+    )
 
-    elif image_quality == "Moderate":
-        quality_score = 60
+    # --------------------------------------------------------
+    # Image quality
+    # --------------------------------------------------------
 
-    elif image_quality == "Low":
-        quality_score = 30
+    if isinstance(
+        image_quality,
+        (int, float)
+    ):
+
+        quality_score = safe_float(
+            image_quality
+        )
 
     else:
-        quality_score = 0
 
+        quality_text = str(
+            image_quality
+        ).lower().strip()
 
-    # -----------------------------------------
-    # Visual similarity score
-    # -----------------------------------------
+        if quality_text == "good":
 
-    if similarity_score is None:
-        similarity_component = None
-    else:
-        similarity_component = similarity_score
+            quality_score = 100
 
+        elif quality_text == "moderate":
 
-    # -----------------------------------------
-    # ML score
+            quality_score = 70
+
+        elif quality_text == "low":
+
+            quality_score = 40
+
+        else:
+
+            quality_score = 50
+
+    # --------------------------------------------------------
+    # Keep values between 0 and 100
+    # --------------------------------------------------------
+
+    verification_score = max(
+        0,
+        min(
+            100,
+            verification_score
+        )
+    )
+
+    similarity_score = max(
+        0,
+        min(
+            100,
+            similarity_score
+        )
+    )
+
+    quality_score = max(
+        0,
+        min(
+            100,
+            quality_score
+        )
+    )
+
+    ml_anomaly_score = max(
+        0,
+        min(
+            100,
+            ml_anomaly_score
+        )
+    )
+
+    # ========================================================
+    # COMPONENTS
+    # ========================================================
+
+    components = {
+
+        "verification": verification_score,
+
+        "similarity": similarity_score,
+
+        "quality": quality_score
+    }
+
+    weights = {
+
+        "verification": 0.30,
+
+        "similarity": 0.30,
+
+        "quality": 0.15
+    }
+
+    # --------------------------------------------------------
+    # ML component
     #
-    # ML anomaly score:
-    # 0   = normal pattern
-    # 100 = highly anomalous pattern
+    # Anomaly score is BAD when high.
+    # Therefore:
     #
-    # Convert it into a positive verification score.
-    # -----------------------------------------
+    # ML consistency = 100 - anomaly score
+    # --------------------------------------------------------
 
-    if ml_anomaly_score is None:
-        ml_component = None
-    else:
-        ml_component = max(
-            0,
+    if ml_anomaly_score is not None:
+
+        components["ml"] = (
             100 - ml_anomaly_score
         )
 
+        weights["ml"] = 0.25
 
-    # -----------------------------------------
-    # Calculate overall score
-    # -----------------------------------------
+    # ========================================================
+    # NORMALIZE WEIGHTS
+    # ========================================================
 
-    components = []
-    weights = []
-
-    # OCR
-    components.append(
-        verification_score
-    )
-    weights.append(0.30)
-
-
-    # Visual similarity
-    if similarity_component is not None:
-
-        components.append(
-            similarity_component
-        )
-
-        weights.append(0.30)
-
-
-    # ML
-    if ml_component is not None:
-
-        components.append(
-            ml_component
-        )
-
-        weights.append(0.25)
-
-
-    # Image quality
-    components.append(
-        quality_score
+    total_weight = sum(
+        weights.values()
     )
 
-    weights.append(0.15)
+    if total_weight == 0:
 
+        overall_score = 0
 
-    # -----------------------------------------
-    # Normalize weights if some component
-    # is unavailable
-    # -----------------------------------------
+    else:
 
-    total_weight = sum(weights)
+        overall_score = sum(
 
-    overall_score = sum(
-        component * weight
-        for component, weight
-        in zip(components, weights)
-    )
+            safe_float(
+                components[name]
+            )
+            *
+            safe_float(
+                weight
+            )
 
-    overall_score = (
-        overall_score / total_weight
-    )
+            for name, weight
+            in weights.items()
 
+        ) / total_weight
 
     overall_score = round(
-        overall_score,
+        max(
+            0,
+            min(
+                100,
+                overall_score
+            )
+        ),
         2
     )
 
-
-    # -----------------------------------------
-    # Risk status
-    # -----------------------------------------
+    # ========================================================
+    # STATUS
+    # ========================================================
 
     if overall_score >= 80:
 
@@ -147,166 +227,175 @@ def calculate_risk_score(
 
         status = "SUSPICIOUS"
 
+    # ========================================================
+    # RETURN
+    # ========================================================
 
     return {
-        "overall_score": overall_score,
-        "quality_score": quality_score,
-        "status": status,
-        "ml_score": ml_anomaly_score
+
+        "overall_score":
+            overall_score,
+
+        "status":
+            status,
+
+        "verification_score":
+            verification_score,
+
+        "similarity_score":
+            similarity_score,
+
+        "image_quality_score":
+            quality_score,
+
+        "ml_anomaly_score":
+            ml_anomaly_score,
+
+        "ml_consistency_score":
+            round(
+                100 - ml_anomaly_score,
+                2
+            ),
+
+        "components":
+            components,
+
+        "weights":
+            weights
     }
 
+
+# ============================================================
+# RISK EXPLANATION
+# ============================================================
 
 def generate_risk_explanation(
     verification_score,
     similarity_score,
     image_quality,
-    status,
     ml_anomaly_score=None
 ):
 
+    verification_score = safe_float(
+        verification_score
+    )
+
+    similarity_score = safe_float(
+        similarity_score
+    )
+
+    ml_anomaly_score = safe_float(
+        ml_anomaly_score
+    )
+
     reasons = []
 
+    # --------------------------------------------------------
+    # Verification
+    # --------------------------------------------------------
 
-    # -----------------------------------------
-    # OCR verification
-    # -----------------------------------------
-
-    if verification_score >= 75:
+    if verification_score >= 80:
 
         reasons.append(
-            "Most required academic information "
-            "was successfully detected."
+            "Required academic information "
+            "was detected consistently."
+        )
+
+    elif verification_score >= 50:
+
+        reasons.append(
+            "Some required academic information "
+            "requires review."
         )
 
     else:
 
         reasons.append(
-            "Some required academic information "
+            "Important academic information "
             "could not be verified."
         )
 
+    # --------------------------------------------------------
+    # Similarity
+    # --------------------------------------------------------
 
-    # -----------------------------------------
-    # Visual similarity
-    # -----------------------------------------
-
-    if similarity_score is None:
-
-        reasons.append(
-            "No reference document was available "
-            "for visual comparison."
-        )
-
-    elif similarity_score >= 90:
+    if similarity_score >= 90:
 
         reasons.append(
-            "The document shows high visual "
+            "The document has strong visual "
             "similarity with the reference."
         )
 
     elif similarity_score >= 70:
 
         reasons.append(
-            "The document shows moderate visual "
+            "The document has moderate visual "
             "similarity with the reference."
         )
 
     else:
 
         reasons.append(
-            "The document shows low visual "
-            "similarity with the reference."
+            "The document differs noticeably "
+            "from the available reference documents."
         )
 
+    # --------------------------------------------------------
+    # Image quality
+    # --------------------------------------------------------
 
-    # -----------------------------------------
-    # ML anomaly analysis
-    # -----------------------------------------
+    quality_text = str(
+        image_quality
+    ).lower()
 
-    if ml_anomaly_score is None:
+    if quality_text == "good":
 
         reasons.append(
-            "ML anomaly analysis was unavailable."
+            "Image quality is good."
         )
 
-    elif ml_anomaly_score >= 60:
+    elif quality_text == "moderate":
 
         reasons.append(
-            "The ML model detected noticeable "
-            "visual and layout deviation from "
+            "Image quality is moderate."
+        )
+
+    elif quality_text == "low":
+
+        reasons.append(
+            "Low image quality may affect analysis."
+        )
+
+    # --------------------------------------------------------
+    # ML
+    # --------------------------------------------------------
+
+    if ml_anomaly_score >= 60:
+
+        reasons.append(
+            "The ML analysis detected noticeable "
+            "visual or structural deviation from "
             "the reference dataset."
         )
 
     elif ml_anomaly_score >= 40:
 
         reasons.append(
-            "The ML model detected some deviation "
-            "from the reference dataset."
+            "The ML analysis detected some "
+            "visual or structural deviation."
         )
 
     else:
 
         reasons.append(
-            "The ML model found the document's "
-            "visual and layout pattern broadly "
-            "consistent with the references."
+            "The ML analysis found patterns broadly "
+            "consistent with the reference dataset."
         )
 
+    # --------------------------------------------------------
+    # Final explanation
+    # --------------------------------------------------------
 
-    # -----------------------------------------
-    # Image quality
-    # -----------------------------------------
-
-    if image_quality == "Good":
-
-        reasons.append(
-            "Document image quality is good enough "
-            "for analysis."
-        )
-
-    elif image_quality == "Moderate":
-
-        reasons.append(
-            "Moderate image quality may affect "
-            "OCR accuracy."
-        )
-
-    else:
-
-        reasons.append(
-            "Low image quality may reduce "
-            "verification reliability."
-        )
-
-
-    # -----------------------------------------
-    # Overall summary
-    # -----------------------------------------
-
-    if status == "LOW RISK":
-
-        summary = (
-            "The available verification signals "
-            "are generally consistent."
-        )
-
-    elif status == "NEEDS REVIEW":
-
-        summary = (
-            "Some verification signals are acceptable, "
-            "but manual review is recommended."
-        )
-
-    else:
-
-        summary = (
-            "The available verification signals show "
-            "significant inconsistencies and the "
-            "document should be reviewed manually."
-        )
-
-
-    return {
-        "summary": summary,
-        "reasons": reasons
-    }
+    return " ".join(
+        reasons
+    )
