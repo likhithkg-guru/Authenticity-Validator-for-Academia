@@ -1,387 +1,524 @@
 import re
-from datetime import datetime
 
 
-# --------------------------------------------------
-# NUMBER EXTRACTION
-# --------------------------------------------------
+def clean_text(text):
+    """Normalize OCR text for analysis."""
+    if not text:
+        return ""
+
+    text = text.replace("\x00", " ")
+    text = re.sub(r"\s+", " ", text)
+
+    return text.strip()
+
 
 def extract_numbers(text):
+    """Extract integer and decimal numbers from OCR text."""
+    if not text:
+        return []
+
+    return [float(x) for x in re.findall(r"\b\d+(?:\.\d+)?\b", text)]
+
+
+def detect_academic_groups(text):
     """
-    Extract academic numbers from OCR text.
-    """
-
-    numbers = []
-
-    for match in re.findall(r"\b\d{1,3}(?:\.\d+)?\b", text):
-        try:
-            value = float(match)
-
-            # Ignore obvious years
-            if 1900 <= value <= 2100:
-                continue
-
-            numbers.append(value)
-
-        except ValueError:
-            pass
-
-    return numbers
-
-
-# --------------------------------------------------
-# MARKS VALIDATION
-# --------------------------------------------------
-
-def validate_marks(text):
-    """
-    Detect marks from the document and check
-    whether they fall within a reasonable range.
-    """
-
-    marks = []
-
-    patterns = [
-        r"(?:marks|score)\s*[:\-]?\s*(\d{1,3})",
-        r"(?:obtained)\s*[:\-]?\s*(\d{1,3})",
-        r"(?:total marks)\s*[:\-]?\s*(\d{1,3})"
-    ]
-
-    for pattern in patterns:
-        matches = re.findall(pattern, text, re.IGNORECASE)
-
-        for value in matches:
-            try:
-                mark = int(value)
-
-                if 0 <= mark <= 100:
-                    marks.append(mark)
-
-            except ValueError:
-                pass
-
-    if not marks:
-        return {
-            "status": "NOT AVAILABLE",
-            "score": 70,
-            "message": "No clear subject-wise marks were detected."
-        }
-
-    invalid = [
-        mark for mark in marks
-        if mark < 0 or mark > 100
-    ]
-
-    if invalid:
-        return {
-            "status": "SUSPICIOUS",
-            "score": 20,
-            "message": "One or more detected marks are outside the expected range."
-        }
-
-    return {
-        "status": "CONSISTENT",
-        "score": 100,
-        "message": f"{len(marks)} mark values were within the expected range."
-    }
-
-
-# --------------------------------------------------
-# PERCENTAGE VALIDATION
-# --------------------------------------------------
-
-def validate_percentage(text):
-    """
-    Check percentage values for obvious invalid values.
-    """
-
-    matches = re.findall(
-        r"(?:percentage|percent|%)\s*[:\-]?\s*(\d{1,3}(?:\.\d+)?)",
-        text,
-        re.IGNORECASE
-    )
-
-    if not matches:
-        # Also check values immediately before %
-        matches = re.findall(
-            r"(\d{1,3}(?:\.\d+)?)\s*%",
-            text
-        )
-
-    if not matches:
-        return {
-            "status": "NOT AVAILABLE",
-            "score": 70,
-            "message": "No percentage value was clearly detected."
-        }
-
-    percentages = []
-
-    for value in matches:
-        try:
-            percentages.append(float(value))
-        except ValueError:
-            pass
-
-    invalid = [
-        value for value in percentages
-        if value < 0 or value > 100
-    ]
-
-    if invalid:
-        return {
-            "status": "SUSPICIOUS",
-            "score": 20,
-            "message": "A percentage value outside 0–100 was detected."
-        }
-
-    return {
-        "status": "CONSISTENT",
-        "score": 100,
-        "message": "Detected percentage values are within a valid range."
-    }
-
-
-# --------------------------------------------------
-# DATE VALIDATION
-# --------------------------------------------------
-
-def validate_dates(text):
-    """
-    Validate dates in DD/MM/YYYY or DD-MM-YYYY format.
-    """
-
-    dates = re.findall(
-        r"\b\d{2}[-/]\d{2}[-/]\d{4}\b",
-        text
-    )
-
-    if not dates:
-        return {
-            "status": "NOT AVAILABLE",
-            "score": 70,
-            "message": "No academic date was detected."
-        }
-
-    invalid_dates = []
-
-    for date_string in dates:
-
-        for date_format in ("%d/%m/%Y", "%d-%m-%Y"):
-
-            try:
-                datetime.strptime(date_string, date_format)
-                break
-
-            except ValueError:
-                continue
-
-        else:
-            invalid_dates.append(date_string)
-
-    if invalid_dates:
-        return {
-            "status": "SUSPICIOUS",
-            "score": 20,
-            "message": "One or more detected dates are invalid."
-        }
-
-    return {
-        "status": "VALID",
-        "score": 100,
-        "message": f"{len(dates)} date value(s) passed validation."
-    }
-
-
-# --------------------------------------------------
-# REQUIRED ACADEMIC INFORMATION
-# --------------------------------------------------
-
-def validate_required_information(text):
-    """
-    Check whether important academic keywords exist.
+    Detect major academic information groups.
+    Missing percentage is NOT treated as a failure because
+    many marksheets do not explicitly print percentage.
     """
 
     text_lower = text.lower()
 
-    required_groups = {
-        "University": [
-            "university",
-            "institution"
-        ],
-
-        "Examination": [
-            "examination",
-            "exam"
-        ],
-
-        "Semester": [
-            "semester",
-            "sem"
-        ],
-
-        "Marks": [
-            "marks",
-            "score",
-            "grade"
-        ]
+    groups = {
+        "marks_table": False,
+        "subjects": False,
+        "institution": False,
+        "result": False
     }
 
-    found = 0
-    missing = []
+    # Marks table
+    marks_keywords = [
+        "marks obtained",
+        "max. marks",
+        "max marks",
+        "min. marks",
+        "min marks",
+        "total",
+        "grade"
+    ]
 
-    for field, keywords in required_groups.items():
-
-        if any(keyword in text_lower for keyword in keywords):
-            found += 1
-        else:
-            missing.append(field)
-
-    percentage = int(
-        (found / len(required_groups)) * 100
+    marks_hits = sum(
+        1 for keyword in marks_keywords
+        if keyword in text_lower
     )
 
-    if percentage >= 75:
+    if marks_hits >= 2:
+        groups["marks_table"] = True
 
-        status = "CONSISTENT"
+    # Subjects
+    subject_keywords = [
+        "subject",
+        "subjects",
+        "first language",
+        "second language",
+        "third language",
+        "mathematics",
+        "science",
+        "social science",
+        "social studies",
+        "english",
+        "kannada",
+        "hindi"
+    ]
 
-    elif percentage >= 50:
+    subject_hits = sum(
+        1 for keyword in subject_keywords
+        if keyword in text_lower
+    )
 
-        status = "NEEDS REVIEW"
+    if subject_hits >= 2:
+        groups["subjects"] = True
 
-    else:
+    # Institution
+    institution_keywords = [
+        "university",
+        "board",
+        "school",
+        "college",
+        "institution",
+        "education",
+        "government of karnataka",
+        "examination and assessment board"
+    ]
 
-        status = "SUSPICIOUS"
+    if any(keyword in text_lower for keyword in institution_keywords):
+        groups["institution"] = True
+
+    # Result
+    result_keywords = [
+        "passed",
+        "pass",
+        "result",
+        "percentage",
+        "grade",
+        "division",
+        "total"
+    ]
+
+    result_hits = sum(
+        1 for keyword in result_keywords
+        if keyword in text_lower
+    )
+
+    if result_hits >= 2:
+        groups["result"] = True
+
+    return groups
+
+
+def detect_subject_marks(text):
+    """
+    Check whether subject-level marks appear to be present.
+    This is intentionally conservative because OCR can flatten tables.
+    """
+
+    text_lower = text.lower()
+
+    subject_keywords = [
+        "first language",
+        "second language",
+        "third language",
+        "mathematics",
+        "science",
+        "social science",
+        "social studies",
+        "english",
+        "kannada",
+        "hindi"
+    ]
+
+    found_subjects = []
+
+    for subject in subject_keywords:
+        if subject in text_lower:
+            found_subjects.append(subject)
 
     return {
-        "status": status,
-        "score": percentage,
-        "found": found,
-        "total": len(required_groups),
-        "missing": missing,
-        "message": f"{found}/{len(required_groups)} academic information groups detected."
+        "detected": len(found_subjects) >= 2,
+        "subjects": found_subjects
     }
 
 
-# --------------------------------------------------
-# REGISTER NUMBER VALIDATION
-# --------------------------------------------------
-
-def validate_register_number(register_number):
+def validate_marks(text):
     """
-    Validate the extracted register number format.
+    Detect marks-table terminology and numeric values.
+    Does not assume OCR has preserved table columns correctly.
     """
 
-    if not register_number:
+    text_lower = text.lower()
 
-        return {
-            "status": "NOT AVAILABLE",
-            "score": 60,
-            "message": "Register number could not be detected."
-        }
+    table_keywords = [
+        "marks obtained",
+        "max. marks",
+        "max marks",
+        "min. marks",
+        "min marks",
+        "marks",
+        "total",
+        "grade"
+    ]
 
-    if re.fullmatch(
-        r"[A-Za-z0-9]{6,20}",
-        register_number
-    ):
+    keyword_hits = sum(
+        1 for keyword in table_keywords
+        if keyword in text_lower
+    )
 
-        return {
-            "status": "VALID",
-            "score": 100,
-            "message": "Register number format is valid."
-        }
+    numbers = extract_numbers(text)
+
+    detected = keyword_hits >= 2 and len(numbers) >= 5
 
     return {
-        "status": "SUSPICIOUS",
-        "score": 25,
-        "message": "Register number format is unusual."
+        "detected": detected,
+        "keyword_hits": keyword_hits,
+        "number_count": len(numbers)
     }
 
 
-# --------------------------------------------------
-# MAIN ACADEMIC ANALYSIS
-# --------------------------------------------------
+def validate_percentage(text):
+    """
+    Detect an explicitly printed percentage.
 
-def analyze_academic_consistency(
-    text,
-    details=None
-):
+    Percentage is optional because many academic marksheets
+    do not display it directly.
+    """
 
-    if details is None:
-        details = {}
+    if not text:
+        return {
+            "status": "NOT_APPLICABLE",
+            "message": "No explicit percentage value detected."
+        }
+
+    patterns = [
+        r"\b\d{1,3}(?:\.\d+)?\s*%",
+        r"percentage\s*[:\-]?\s*\d{1,3}(?:\.\d+)?",
+        r"percent\s*[:\-]?\s*\d{1,3}(?:\.\d+)?"
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+
+        if match:
+            return {
+                "status": "PASS",
+                "message": f"Explicit percentage detected: {match.group(0)}"
+            }
+
+    return {
+        "status": "NOT_APPLICABLE",
+        "message": "Percentage is not explicitly printed on this document."
+    }
+
+
+def validate_dates(text):
+    """Detect common date formats."""
+
+    if not text:
+        return {
+            "status": "REVIEW",
+            "message": "No date information detected."
+        }
+
+    patterns = [
+        r"\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b",
+        r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b"
+    ]
+
+    dates = []
+
+    for pattern in patterns:
+        dates.extend(re.findall(pattern, text))
+
+    if dates:
+        return {
+            "status": "PASS",
+            "message": f"{len(dates)} date value(s) detected."
+        }
+
+    return {
+        "status": "REVIEW",
+        "message": "No clearly extractable date detected."
+    }
+
+
+def validate_register_number(text):
+    """Detect register / identification number."""
+
+    if not text:
+        return {
+            "status": "REVIEW",
+            "message": "No register number detected."
+        }
+
+    patterns = [
+        r"register\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9/-]{5,25})",
+        r"registration\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9/-]{5,25})",
+        r"roll\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9/-]{5,25})",
+        r"\bUSN\s*[:.\-]?\s*([A-Z0-9/-]{5,25})"
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+
+        if match:
+            return {
+                "status": "PASS",
+                "message": "Register/identification number detected."
+            }
+
+    return {
+        "status": "REVIEW",
+        "message": "Register/identification number could not be reliably extracted."
+    }
+
+
+def check_numeric_consistency(text):
+    """
+    Evaluate whether marks-related numeric information exists.
+
+    Important:
+    OCR frequently destroys table column structure.
+    Therefore we do NOT call missing totals a suspicious/fraud indicator.
+    """
 
     marks_result = validate_marks(text)
 
-    percentage_result = validate_percentage(text)
+    if not marks_result["detected"]:
+        return {
+            "status": "REVIEW",
+            "message": "Marks information could not be reliably extracted."
+        }
 
-    date_result = validate_dates(text)
+    text_lower = text.lower()
 
-    required_result = validate_required_information(text)
-
-    register_result = validate_register_number(
-        details.get("register_number", "")
+    total_present = bool(
+        re.search(r"\btotal\b", text_lower)
     )
 
-    results = {
-        "marks": marks_result,
-        "percentage": percentage_result,
-        "dates": date_result,
-        "required_information": required_result,
-        "register_number": register_result
+    if total_present:
+        return {
+            "status": "REVIEW",
+            "message": "Marks and total fields were detected, but OCR table alignment should be reviewed."
+        }
+
+    return {
+        "status": "REVIEW",
+        "message": "Marks were detected, but a clearly extractable total was not found."
     }
 
-    scores = [
-        marks_result["score"],
-        percentage_result["score"],
-        date_result["score"],
-        required_result["score"],
-        register_result["score"]
-    ]
 
-    overall_score = round(
-        sum(scores) / len(scores),
-        2
+def validate_required_information(text):
+    """Check whether major academic information groups are present."""
+
+    groups = detect_academic_groups(text)
+
+    detected = sum(
+        1 for value in groups.values()
+        if value
     )
 
-    suspicious_indicators = []
+    total = len(groups)
 
-    for name, result in results.items():
+    score = (detected / total) * 100
 
-        if result["status"] in [
-            "SUSPICIOUS",
-            "NEEDS REVIEW"
-        ]:
-
-            suspicious_indicators.append({
-                "check": name,
-                "status": result["status"],
-                "message": result["message"]
-            })
-
-    if overall_score >= 80:
-
+    if detected == total:
         status = "CONSISTENT"
 
-    elif overall_score >= 60:
-
+    elif detected >= 3:
         status = "NEEDS REVIEW"
 
     else:
-
-        status = "SUSPICIOUS"
+        status = "INCOMPLETE"
 
     return {
-        "available": True,
         "status": status,
-        "overall_score": overall_score,
-        "suspicious_count": len(
-            suspicious_indicators
-        ),
-        "checks": results,
-        "suspicious_indicators": suspicious_indicators,
-        "explanation": (
-            "Academic information was checked for "
-            "basic consistency, valid ranges, dates, "
-            "required fields and register-number format."
+        "score": round(score, 1),
+        "groups": groups,
+        "detected_groups": detected,
+        "total_groups": total
+    }
+
+
+def analyze_academic_consistency(text):
+    """
+    Main academic consistency analysis.
+
+    The system distinguishes:
+    - genuine missing information
+    - optional fields
+    - OCR/table extraction limitations
+
+    It does not label a document fraudulent based only on
+    OCR uncertainty.
+    """
+
+    text = clean_text(text)
+
+    if not text:
+        return {
+            "status": "INCOMPLETE",
+            "score": 0.0,
+            "suspicious_count": 1,
+            "suspicious_indicators": [
+                {
+                    "check": "ocr",
+                    "status": "FAIL",
+                    "message": "No academic text could be extracted."
+                }
+            ],
+            "explanation": "Academic consistency could not be evaluated because OCR returned no usable text."
+        }
+
+    required = validate_required_information(text)
+    subject_result = detect_subject_marks(text)
+    marks_result = validate_marks(text)
+    percentage_result = validate_percentage(text)
+    date_result = validate_dates(text)
+    register_result = validate_register_number(text)
+    numeric_result = check_numeric_consistency(text)
+
+    indicators = []
+
+    # Required academic information
+    if required["detected_groups"] < required["total_groups"]:
+        indicators.append({
+            "check": "required_information",
+            "status": "NEEDS REVIEW",
+            "message": (
+                f"{required['detected_groups']}/"
+                f"{required['total_groups']} academic information groups detected."
+            )
+        })
+
+    # Subject marks
+    if subject_result["detected"]:
+        subject_message = (
+            f"{len(subject_result['subjects'])} subject-related field(s) detected."
         )
+    else:
+        subject_message = "Subject-level information could not be reliably detected."
+
+        indicators.append({
+            "check": "subjects",
+            "status": "NEEDS REVIEW",
+            "message": subject_message
+        })
+
+    # Marks table
+    if marks_result["detected"]:
+        marks_message = (
+            "Marks-table terminology and numeric values detected."
+        )
+    else:
+        marks_message = (
+            "Marks-table information could not be reliably extracted."
+        )
+
+        indicators.append({
+            "check": "marks_table",
+            "status": "NEEDS REVIEW",
+            "message": marks_message
+        })
+
+    # Percentage
+    if percentage_result["status"] == "PASS":
+        percentage_message = percentage_result["message"]
+
+    else:
+        percentage_message = percentage_result["message"]
+
+        # IMPORTANT:
+        # Missing percentage is NOT suspicious.
+        # We deliberately do NOT append it to indicators.
+
+    # Date
+    if date_result["status"] != "PASS":
+        indicators.append({
+            "check": "date",
+            "status": "NEEDS REVIEW",
+            "message": date_result["message"]
+        })
+
+    # Register
+    if register_result["status"] != "PASS":
+        indicators.append({
+            "check": "register_number",
+            "status": "NEEDS REVIEW",
+            "message": register_result["message"]
+        })
+
+    # Numeric consistency
+    if numeric_result["status"] == "REVIEW":
+        indicators.append({
+            "check": "numeric_consistency",
+            "status": "NEEDS REVIEW",
+            "message": numeric_result["message"]
+        })
+
+    # Calculate consistency score
+    score = required["score"]
+
+    # Reward reliable subject and marks detection
+    if subject_result["detected"]:
+        score += 2.5
+
+    if marks_result["detected"]:
+        score += 2.5
+
+    score = min(score, 100.0)
+
+    # If major information is present, avoid over-penalizing OCR uncertainty.
+    if required["detected_groups"] >= 3 and subject_result["detected"] and marks_result["detected"]:
+        status = "CONSISTENT"
+
+    elif required["detected_groups"] >= 3:
+        status = "NEEDS REVIEW"
+
+    else:
+        status = "INCOMPLETE"
+
+    # Human-readable explanation
+    if status == "CONSISTENT":
+        explanation = (
+            "Required academic information, subject details and marks-table "
+            "information were detected consistently. Some table relationships "
+            "may still require manual review because OCR can alter table alignment."
+        )
+
+    elif status == "NEEDS REVIEW":
+        explanation = (
+            "Academic information was detected, but some fields or numeric/table "
+            "relationships require additional review. OCR table extraction can "
+            "affect automated consistency checks."
+        )
+
+    else:
+        explanation = (
+            "Important academic information could not be reliably extracted. "
+            "Manual verification is recommended."
+        )
+
+    return {
+        "status": status,
+        "score": round(score, 1),
+        "suspicious_count": len(indicators),
+        "suspicious_indicators": indicators,
+        "explanation": explanation,
+
+        "required_information": required,
+        "subjects": subject_result,
+        "marks": marks_result,
+        "percentage": percentage_result,
+        "dates": date_result,
+        "register_number": register_result,
+        "numeric_consistency": numeric_result
     }

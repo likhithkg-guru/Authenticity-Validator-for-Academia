@@ -1,28 +1,22 @@
-import os
-import sqlite3
-from datetime import datetime
-
 from flask import (
     Flask,
     render_template,
     request,
+    redirect,
+    url_for,
     send_from_directory,
-    send_file
+    make_response
 )
 
-from werkzeug.utils import secure_filename
-
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+import os
+import sqlite3
+from datetime import datetime
 
 from utils.ocr import extract_text_from_pdf
-from utils.verifier import extract_details, verify_document
+from utils.verifier import verify_document
 from utils.image_analyzer import analyze_image_quality
 from utils.authenticity import find_best_reference
-from utils.risk_engine import (
-    calculate_risk_score,
-    generate_risk_explanation
-)
+from utils.risk_engine import calculate_risk_score, generate_risk_explanation
 from utils.ml_detector import analyze_with_ml
 from utils.tampering_detector import analyze_tampering
 from utils.academic_validator import analyze_academic_consistency
@@ -30,268 +24,112 @@ from utils.document_classifier import classify_document
 
 
 # ============================================================
-# FLASK CONFIGURATION
+# APP CONFIGURATION
 # ============================================================
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-UPLOAD_FOLDER = os.path.join(
-    BASE_DIR,
-    "uploads"
-)
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+REFERENCE_FOLDER = os.path.join(BASE_DIR, "reference_documents")
+REPORT_FOLDER = os.path.join(BASE_DIR, "reports")
 
-REFERENCE_FOLDER = os.path.join(
-    BASE_DIR,
-    "reference_documents"
-)
+DATABASE = os.path.join(BASE_DIR, "verification_history.db")
 
-REPORT_FOLDER = os.path.join(
-    BASE_DIR,
-    "reports"
-)
-
-DATABASE = os.path.join(
-    BASE_DIR,
-    "verification_history.db"
-)
-
-ALLOWED_EXTENSIONS = {"pdf"}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(REFERENCE_FOLDER, exist_ok=True)
+os.makedirs(REPORT_FOLDER, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["REFERENCE_FOLDER"] = REFERENCE_FOLDER
-app.config["REPORT_FOLDER"] = REPORT_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = 20 * 1024 * 1024
-
-
-# ============================================================
-# CREATE FOLDERS
-# ============================================================
-
-os.makedirs(
-    UPLOAD_FOLDER,
-    exist_ok=True
-)
-
-os.makedirs(
-    REFERENCE_FOLDER,
-    exist_ok=True
-)
-
-os.makedirs(
-    REPORT_FOLDER,
-    exist_ok=True
-)
 
 
 # ============================================================
 # DATABASE
 # ============================================================
 
-def init_database():
+def init_db():
 
-    connection = sqlite3.connect(
-        DATABASE
-    )
+    conn = sqlite3.connect(DATABASE)
 
-    cursor = connection.cursor()
+    cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS verification_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filename TEXT,
-            document_type TEXT,
             candidate_name TEXT,
             register_number TEXT,
             dob TEXT,
+            document_type TEXT,
             overall_score REAL,
             status TEXT,
-            verification_score REAL,
-            similarity_score REAL,
-            ml_anomaly_score REAL,
-            image_quality TEXT,
-            reference_filename TEXT,
             created_at TEXT
         )
-        """
-    )
+    """)
 
-    connection.commit()
-    connection.close()
-
-
-init_database()
+    conn.commit()
+    conn.close()
 
 
-# ============================================================
-# HELPER
-# ============================================================
-
-def allowed_file(filename):
-
-    return (
-        filename
-        and "."
-        in filename
-        and filename.rsplit(
-            ".",
-            1
-        )[1].lower()
-        in ALLOWED_EXTENSIONS
-    )
-
-
-def safe_float(value, default=0.0):
-
-    try:
-
-        if value is None:
-            return float(default)
-
-        if isinstance(value, str):
-
-            value = value.strip()
-
-            if value.endswith("%"):
-                value = value[:-1]
-
-            if value == "":
-                return float(default)
-
-        return float(value)
-
-    except (
-        TypeError,
-        ValueError
-    ):
-
-        return float(default)
+init_db()
 
 
 # ============================================================
-# NORMALIZE VERIFICATION RESULT
+# HELPERS
 # ============================================================
 
 def normalize_verification_result(result):
 
     """
-    Handles both possible formats from verifier.py.
+    Makes verifier output compatible with the application.
 
-    Dictionary example:
-        {
-            "score": 80,
-            "status": "LOW RISK",
-            "checks": {}
-        }
-
-    Tuple example:
-        (
-            80,
-            "LOW RISK",
-            {}
-        )
+    New verifier returns a dictionary.
+    Older versions may return tuple/list.
     """
 
-    # --------------------------------------------------------
-    # DICTIONARY
-    # --------------------------------------------------------
+    if isinstance(result, dict):
+        return result
 
-    if isinstance(
-        result,
-        dict
-    ):
+    if isinstance(result, (tuple, list)):
 
-        score = result.get(
-            "score",
-            result.get(
-                "verification_score",
-                0
-            )
-        )
+        if len(result) >= 2:
 
-        status = result.get(
-            "status",
-            "UNKNOWN"
-        )
+            first = result[0]
+            second = result[1]
 
-        checks = result.get(
-            "checks",
-            {}
-        )
+            if isinstance(first, dict):
+                data = first.copy()
 
-        return {
-            "score": safe_float(score),
-            "status": status,
-            "checks": checks
-        }
+                if "score" not in data:
+                    data["score"] = second
 
-    # --------------------------------------------------------
-    # TUPLE / LIST
-    # --------------------------------------------------------
+                if "verification_score" not in data:
+                    data["verification_score"] = second
 
-    if isinstance(
-        result,
-        (tuple, list)
-    ):
-
-        score = (
-            result[0]
-            if len(result) > 0
-            else 0
-        )
-
-        status = (
-            result[1]
-            if len(result) > 1
-            else "UNKNOWN"
-        )
-
-        checks = (
-            result[2]
-            if len(result) > 2
-            else {}
-        )
-
-        # Sometimes the second value can itself be
-        # a dictionary containing status/checks.
-
-        if isinstance(
-            status,
-            dict
-        ):
-
-            status_dict = status
-
-            actual_status = status_dict.get(
-                "status",
-                "UNKNOWN"
-            )
-
-            actual_checks = status_dict.get(
-                "checks",
-                checks
-            )
-
-            status = actual_status
-            checks = actual_checks
-
-        return {
-            "score": safe_float(score),
-            "status": str(status),
-            "checks": checks
-        }
-
-    # --------------------------------------------------------
-    # UNKNOWN FORMAT
-    # --------------------------------------------------------
+                return data
 
     return {
+        "available": False,
+        "status": "INSUFFICIENT INFORMATION",
         "score": 0,
-        "status": "UNKNOWN",
-        "checks": {}
+        "verification_score": 0,
+        "details": {},
+        "checks": {},
+        "verification_checks": {},
+        "suspicious_count": 0,
+        "suspicious_indicators": [],
+        "explanation": "Verification module did not return a valid result."
     }
+
+
+def safe_float(value, default=0.0):
+
+    try:
+        return float(value)
+
+    except (TypeError, ValueError):
+        return default
 
 
 # ============================================================
@@ -301,9 +139,7 @@ def normalize_verification_result(result):
 @app.route("/")
 def index():
 
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 
 # ============================================================
@@ -313,251 +149,225 @@ def index():
 @app.route("/upload")
 def upload():
 
-    return render_template(
-        "upload.html"
-    )
+    return render_template("upload.html")
 
 
 # ============================================================
-# SERVE UPLOADED FILE
+# SERVE UPLOADED FILES
 # ============================================================
 
-@app.route(
-    "/uploads/<filename>"
-)
+@app.route("/uploads/<filename>")
 def uploaded_file(filename):
 
     return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
+        UPLOAD_FOLDER,
         filename
     )
 
 
 # ============================================================
-# SERVE REFERENCE FILE
+# SERVE REFERENCE DOCUMENTS
 # ============================================================
 
-@app.route(
-    "/references/<filename>"
-)
+@app.route("/references/<filename>")
 def reference_file(filename):
 
     return send_from_directory(
-        app.config["REFERENCE_FOLDER"],
+        REFERENCE_FOLDER,
         filename
     )
 
 
 # ============================================================
-# MAIN ANALYSIS
+# ANALYZE DOCUMENT
 # ============================================================
 
-@app.route(
-    "/analyze",
-    methods=["POST"]
-)
+@app.route("/analyze", methods=["POST"])
 def analyze():
 
-    # ========================================================
-    # FILE CHECK
-    # ========================================================
+    # --------------------------------------------------------
+    # CHECK FILE
+    # --------------------------------------------------------
 
     if "document" not in request.files:
 
-        return (
-            "No document uploaded.",
-            400
-        )
+        return redirect(url_for("upload"))
 
     file = request.files["document"]
 
     if file.filename == "":
 
-        return (
-            "No document selected.",
-            400
-        )
+        return redirect(url_for("upload"))
 
-    if not allowed_file(
-        file.filename
-    ):
-
-        return (
-            "Only PDF files are allowed.",
-            400
-        )
-
-    # ========================================================
+    # --------------------------------------------------------
     # SAVE FILE
-    # ========================================================
+    # --------------------------------------------------------
 
-    original_filename = secure_filename(
-        file.filename
-    )
+    original_filename = file.filename
 
-    timestamp = datetime.now().strftime(
-        "%Y%m%d_%H%M%S"
-    )
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    name, extension = os.path.splitext(
-        original_filename
-    )
+    name, extension = os.path.splitext(original_filename)
 
-    filename = (
-        f"{name}_{timestamp}{extension}"
-    )
+    filename = f"{name}_{timestamp}{extension}"
 
     filepath = os.path.join(
-        app.config["UPLOAD_FOLDER"],
+        UPLOAD_FOLDER,
         filename
     )
 
     file.save(filepath)
 
-    # ========================================================
+    # --------------------------------------------------------
     # OCR
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
-        text = extract_text_from_pdf(
-            filepath
-        )
+        ocr_text = extract_text_from_pdf(filepath)
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "OCR ERROR:",
-            error
-        )
+        ocr_text = ""
 
-        text = ""
+        print("OCR ERROR:", e)
 
-    # ========================================================
+    # --------------------------------------------------------
     # DOCUMENT CLASSIFICATION
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
-        document_result = classify_document(
-            text
-        )
+        classification = classify_document(ocr_text)
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "DOCUMENT CLASSIFIER ERROR:",
-            error
-        )
+        print("CLASSIFICATION ERROR:", e)
 
-        document_result = {
+        classification = {
             "document_type": "UNKNOWN",
             "confidence": 0,
-            "scores": {},
-            "matched_keywords": []
+            "evidence": []
         }
 
-    document_type = document_result.get(
+    document_type = classification.get(
         "document_type",
         "UNKNOWN"
     )
 
     document_confidence = safe_float(
-        document_result.get(
-            "confidence",
-            0
-        )
+        classification.get("confidence", 0)
     )
 
-    # ========================================================
-    # EXTRACT DETAILS
-    # ========================================================
-
-    try:
-
-        details = extract_details(
-            text
-        )
-
-    except Exception as error:
-
-        print(
-            "DETAIL EXTRACTION ERROR:",
-            error
-        )
-
-        details = {
-            "candidate_name": "Not detected",
-            "register_number": "Not detected",
-            "date_of_birth": "Not detected"
-        }
-
-    candidate_name = details.get(
-        "candidate_name",
-        "Not detected"
+    classification_evidence = classification.get(
+        "evidence",
+        []
     )
 
-    register_number = details.get(
-        "register_number",
-        "Not detected"
-    )
-
-    dob = details.get(
-        "date_of_birth",
-        details.get(
-            "dob",
-            "Not detected"
-        )
-    )
-
-    # ========================================================
-    # BASIC VERIFICATION
-    # ========================================================
+    # --------------------------------------------------------
+    # INFORMATION VERIFICATION
+    # --------------------------------------------------------
 
     try:
 
         raw_verification = verify_document(
-            details,
-            text
+            ocr_text
         )
 
         verification = normalize_verification_result(
             raw_verification
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "VERIFICATION ERROR:",
-            error
-        )
+        print("VERIFICATION ERROR:", e)
 
         verification = {
+            "available": False,
+            "status": "INSUFFICIENT INFORMATION",
             "score": 0,
-            "status": "SUSPICIOUS",
-            "checks": {}
+            "verification_score": 0,
+            "details": {},
+            "checks": {},
+            "verification_checks": {},
+            "suspicious_count": 0,
+            "suspicious_indicators": [],
+            "explanation": str(e)
         }
 
-    verification_score = safe_float(
-        verification.get(
-            "score",
-            0
-        )
-    )
+    # --------------------------------------------------------
+    # EXTRACTED DETAILS
+    # --------------------------------------------------------
 
-    verification_status = verification.get(
-        "status",
-        "UNKNOWN"
-    )
-
-    verification_checks = verification.get(
-        "checks",
+    details = verification.get(
+        "details",
         {}
     )
 
-    # ========================================================
+    # Safety fallback
+    if not isinstance(details, dict):
+        details = {}
+
+    candidate_name = details.get(
+        "candidate_name",
+        verification.get(
+            "candidate_name",
+            "Not detected"
+        )
+    )
+
+    register_number = details.get(
+        "register_number",
+        verification.get(
+            "register_number",
+            "Not detected"
+        )
+    )
+
+    dob = details.get(
+        "date_of_birth",
+        details.get(
+            "dob",
+            verification.get(
+                "date_of_birth",
+                "Not detected"
+            )
+        )
+    )
+
+    # --------------------------------------------------------
+    # VERIFICATION SCORE
+    # --------------------------------------------------------
+
+    verification_score = safe_float(
+        verification.get(
+            "verification_score",
+            verification.get(
+                "score",
+                0
+            )
+        )
+    )
+
+    # --------------------------------------------------------
+    # VERIFICATION CHECKS
+    # --------------------------------------------------------
+
+    verification_checks = verification.get(
+        "verification_checks",
+        verification.get(
+            "checks",
+            {}
+        )
+    )
+
+    if not isinstance(verification_checks, dict):
+
+        verification_checks = {}
+
+    # --------------------------------------------------------
     # IMAGE QUALITY
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
@@ -565,12 +375,9 @@ def analyze():
             filepath
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "IMAGE ANALYSIS ERROR:",
-            error
-        )
+        print("IMAGE QUALITY ERROR:", e)
 
         image_info = {
             "image_quality": "Unknown",
@@ -579,133 +386,101 @@ def analyze():
             "height": 0
         }
 
-    image_quality = image_info.get(
-        "image_quality",
-        "Unknown"
-    )
-
-    # ========================================================
+    # --------------------------------------------------------
     # REFERENCE COMPARISON
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
         reference_result = find_best_reference(
             filepath,
-            app.config["REFERENCE_FOLDER"]
+            REFERENCE_FOLDER
         )
 
-        # Expected:
-        # filename, similarity, status
+    except Exception as e:
 
-        if isinstance(
-            reference_result,
-            (tuple, list)
-        ):
+        print("REFERENCE ERROR:", e)
 
-            reference_filename = (
-                reference_result[0]
-                if len(reference_result) > 0
-                else None
+        reference_result = {}
+
+    reference_filename = None
+    similarity_score = 0.0
+
+    if isinstance(reference_result, dict):
+
+        reference_filename = reference_result.get(
+            "reference_filename",
+            reference_result.get(
+                "filename"
             )
+        )
 
-            similarity_score = (
-                reference_result[1]
-                if len(reference_result) > 1
-                else 0
-            )
-
-            similarity_status = (
-                reference_result[2]
-                if len(reference_result) > 2
-                else "UNAVAILABLE"
-            )
-
-        elif isinstance(
-            reference_result,
-            dict
-        ):
-
-            reference_filename = reference_result.get(
-                "filename",
-                reference_result.get(
-                    "reference_filename"
-                )
-            )
-
-            similarity_score = reference_result.get(
+        similarity_score = safe_float(
+            reference_result.get(
                 "similarity",
                 reference_result.get(
                     "similarity_score",
                     0
                 )
             )
-
-            similarity_status = reference_result.get(
-                "status",
-                "UNAVAILABLE"
-            )
-
-        else:
-
-            reference_filename = None
-            similarity_score = 0
-            similarity_status = "UNAVAILABLE"
-
-    except Exception as error:
-
-        print(
-            "REFERENCE ERROR:",
-            error
         )
 
-        reference_filename = None
-        similarity_score = 0
-        similarity_status = "UNAVAILABLE"
+    elif isinstance(reference_result, (tuple, list)):
 
-    similarity_score = safe_float(
-        similarity_score
-    )
+        if len(reference_result) >= 2:
 
-    # ========================================================
+            reference_filename = reference_result[0]
+
+            similarity_score = safe_float(
+                reference_result[1]
+            )
+
+    # --------------------------------------------------------
     # ML ANALYSIS
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
         ml_result = analyze_with_ml(
             filepath,
-            app.config["REFERENCE_FOLDER"]
+            REFERENCE_FOLDER
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "ML ERROR:",
-            error
-        )
+        print("ML ERROR:", e)
 
         ml_result = {
             "available": False,
-            "anomaly_score": 0,
-            "prediction": 0,
             "status": "UNAVAILABLE",
+            "anomaly_score": 0,
             "reference_count": 0,
-            "explanation": (
-                "ML analysis could not be completed."
-            )
+            "explanation": "ML analysis unavailable."
         }
 
-    ml_anomaly_score = safe_float(
+    if not isinstance(ml_result, dict):
+
+        ml_result = {
+            "available": False,
+            "status": "UNAVAILABLE",
+            "anomaly_score": 0,
+            "reference_count": 0,
+            "explanation": "Invalid ML result."
+        }
+
+    ml_anomaly = safe_float(
         ml_result.get(
             "anomaly_score",
-            0
+            ml_result.get(
+                "score",
+                0
+            )
         )
     )
 
-    # ========================================================
+    # --------------------------------------------------------
     # TAMPERING ANALYSIS
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
@@ -713,12 +488,9 @@ def analyze():
             filepath
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "TAMPERING ERROR:",
-            error
-        )
+        print("TAMPERING ERROR:", e)
 
         tampering_result = {
             "available": False,
@@ -726,31 +498,22 @@ def analyze():
             "tampering_score": 0,
             "suspicious_regions": 0,
             "total_regions": 0,
-            "texture_mean": 0,
-            "texture_std": 0,
-            "edge_density": 0,
-            "indicators": [],
-            "explanation": (
-                "Tampering analysis could not be completed."
-            )
+            "explanation": "Tampering analysis unavailable."
         }
 
-    # ========================================================
+    # --------------------------------------------------------
     # ACADEMIC CONSISTENCY
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
         academic_result = analyze_academic_consistency(
-            text
+            ocr_text
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "ACADEMIC VALIDATION ERROR:",
-            error
-        )
+        print("ACADEMIC VALIDATION ERROR:", e)
 
         academic_result = {
             "available": False,
@@ -759,227 +522,183 @@ def analyze():
             "suspicious_count": 0,
             "checks": {},
             "suspicious_indicators": [],
-            "explanation": (
-                "Academic consistency analysis "
-                "could not be completed."
-            )
+            "explanation": "Academic consistency analysis unavailable."
         }
 
-    # ========================================================
+    # --------------------------------------------------------
     # RISK SCORE
-    # ========================================================
+    # --------------------------------------------------------
+
+    image_quality = image_info.get(
+        "image_quality",
+        "Unknown"
+    )
+
+    quality_score = 0
+
+    if image_quality == "Good":
+        quality_score = 100
+
+    elif image_quality == "Moderate":
+        quality_score = 70
+
+    elif image_quality == "Low":
+        quality_score = 40
+
+    # --------------------------------------------------------
+    # CALCULATE OVERALL SCORE
+    # --------------------------------------------------------
 
     try:
 
-        risk_result = calculate_risk_score(
-            verification_score=verification_score,
-            similarity_score=similarity_score,
-            image_quality=image_quality,
-            ml_anomaly_score=ml_anomaly_score
+        overall_score = calculate_risk_score(
+            verification_score,
+            similarity_score,
+            ml_anomaly,
+            quality_score
         )
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "RISK ENGINE ERROR:",
-            error
-        )
+        print("RISK SCORE ERROR:", e)
 
-        risk_result = {
-            "overall_score": 0,
-            "status": "SUSPICIOUS",
-            "verification_score": verification_score,
-            "similarity_score": similarity_score,
-            "image_quality_score": 0,
-            "ml_anomaly_score": ml_anomaly_score,
-            "ml_consistency_score": (
-                100 - ml_anomaly_score
-            ),
-            "components": {},
-            "weights": {}
-        }
+        overall_score = 0
 
-    overall_score = safe_float(
-        risk_result.get(
-            "overall_score",
-            0
-        )
+    overall_score = round(
+        safe_float(overall_score),
+        2
     )
 
-    status = risk_result.get(
-        "status",
-        "SUSPICIOUS"
-    )
+    # --------------------------------------------------------
+    # FINAL STATUS
+    # --------------------------------------------------------
 
-    # ========================================================
+    if overall_score >= 80:
+
+        status = "LOW RISK"
+
+    elif overall_score >= 60:
+
+        status = "NEEDS REVIEW"
+
+    else:
+
+        status = "SUSPICIOUS"
+
+    # --------------------------------------------------------
     # RISK EXPLANATION
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
         risk_explanation = generate_risk_explanation(
-            verification_score=verification_score,
-            similarity_score=similarity_score,
-            image_quality=image_quality,
-            ml_anomaly_score=ml_anomaly_score
+            verification_score,
+            similarity_score,
+            ml_anomaly,
+            image_quality
         )
 
-    except Exception as error:
-
-        print(
-            "RISK EXPLANATION ERROR:",
-            error
-        )
+    except Exception:
 
         risk_explanation = (
-            "Risk explanation could not be generated."
+            "Automated analysis completed. "
+            "Manual verification is recommended."
         )
 
-    # ========================================================
-    # SCORE COMPONENTS
-    # ========================================================
-
-    score_components = {
-
-        "Verification":
-            verification_score,
-
-        "Reference Similarity":
-            similarity_score,
-
-        "ML Consistency":
-            round(
-                100 - ml_anomaly_score,
-                2
-            ),
-
-        "Image Quality":
-            safe_float(
-                risk_result.get(
-                    "image_quality_score",
-                    0
-                )
-            )
-    }
-
-    # ========================================================
-    # DATABASE HISTORY
-    # ========================================================
+    # --------------------------------------------------------
+    # SAVE HISTORY
+    # --------------------------------------------------------
 
     try:
 
-        connection = sqlite3.connect(
-            DATABASE
-        )
+        conn = sqlite3.connect(DATABASE)
 
-        cursor = connection.cursor()
+        cursor = conn.cursor()
 
-        cursor.execute(
-            """
-            INSERT INTO verification_history (
-                filename,
-                document_type,
-                candidate_name,
-                register_number,
-                dob,
-                overall_score,
-                status,
-                verification_score,
-                similarity_score,
-                ml_anomaly_score,
-                image_quality,
-                reference_filename,
-                created_at
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+        cursor.execute("""
+            INSERT INTO verification_history
             (
                 filename,
-                document_type,
                 candidate_name,
                 register_number,
                 dob,
+                document_type,
                 overall_score,
                 status,
-                verification_score,
-                similarity_score,
-                ml_anomaly_score,
-                image_quality,
-                reference_filename
-                if reference_filename
-                else "Not available",
-                datetime.now().strftime(
-                    "%Y-%m-%d %H:%M:%S"
-                )
+                created_at
             )
-        )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            filename,
+            candidate_name,
+            register_number,
+            dob,
+            document_type,
+            overall_score,
+            status,
+            datetime.now().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        ))
 
-        connection.commit()
-        connection.close()
+        conn.commit()
+        conn.close()
 
-    except Exception as error:
+    except Exception as e:
 
-        print(
-            "DATABASE ERROR:",
-            error
-        )
+        print("DATABASE ERROR:", e)
 
-    # ========================================================
+    # --------------------------------------------------------
+    # PREVIEW URL
+    # --------------------------------------------------------
+
+    uploaded_preview_url = url_for(
+        "uploaded_file",
+        filename=filename
+    )
+
+    # --------------------------------------------------------
     # RESULT PAGE
-    # ========================================================
+    # --------------------------------------------------------
 
     return render_template(
         "result.html",
 
-        filename=filename,
+        overall_score=overall_score,
 
-        # OCR
-        ocr_text=text,
+        status=status,
 
-        # Document classification
-        document_result=document_result,
         document_type=document_type,
+
         document_confidence=document_confidence,
 
-        # Details
-        details=details,
-        candidate_name=candidate_name,
-        register_number=register_number,
-        dob=dob,
+        classification_evidence=classification_evidence,
 
-        # Verification
-        verification=verification,
         verification_score=verification_score,
-        verification_status=verification_status,
+
+        similarity_score=similarity_score,
+
+        ml_result=ml_result,
+
+        image_info=image_info,
+
+        details=details,
+
+        filename=filename,
+
         verification_checks=verification_checks,
 
-        # Image
-        image_info=image_info,
-        image_quality=image_quality,
-
-        # Reference
-        reference_filename=reference_filename,
-        similarity_score=similarity_score,
-        similarity_status=similarity_status,
-
-        # ML
-        ml_result=ml_result,
-        ml_anomaly_score=ml_anomaly_score,
-
-        # Tampering
-        tampering_result=tampering_result,
-
-        # Academic
         academic_result=academic_result,
 
-        # Risk
-        risk_result=risk_result,
-        overall_score=overall_score,
-        status=status,
+        tampering_result=tampering_result,
+
         risk_explanation=risk_explanation,
 
-        # Score components
-        score_components=score_components
+        ocr_text=ocr_text,
+
+        reference_filename=reference_filename,
+
+        uploaded_preview_url=uploaded_preview_url
     )
 
 
@@ -990,25 +709,21 @@ def analyze():
 @app.route("/history")
 def history():
 
-    connection = sqlite3.connect(
-        DATABASE
-    )
+    conn = sqlite3.connect(DATABASE)
 
-    connection.row_factory = sqlite3.Row
+    conn.row_factory = sqlite3.Row
 
-    cursor = connection.cursor()
+    cursor = conn.cursor()
 
-    cursor.execute(
-        """
+    cursor.execute("""
         SELECT *
         FROM verification_history
         ORDER BY id DESC
-        """
-    )
+    """)
 
     records = cursor.fetchall()
 
-    connection.close()
+    conn.close()
 
     return render_template(
         "history.html",
@@ -1025,7 +740,7 @@ def download_report():
 
     filename = request.args.get(
         "filename",
-        "document"
+        "document.pdf"
     )
 
     candidate_name = request.args.get(
@@ -1040,11 +755,6 @@ def download_report():
 
     dob = request.args.get(
         "dob",
-        "Not detected"
-    )
-
-    document_type = request.args.get(
-        "document_type",
         "Not detected"
     )
 
@@ -1083,344 +793,205 @@ def download_report():
         "Not available"
     )
 
-    # ========================================================
-    # REPORT NAME
-    # ========================================================
-
-    report_name = (
-        os.path.splitext(
-            secure_filename(filename)
-        )[0]
-        + "_verification_report.pdf"
+    document_type = request.args.get(
+        "document_type",
+        "Unknown"
     )
 
-    report_path = os.path.join(
-        app.config["REPORT_FOLDER"],
-        report_name
-    )
+    try:
 
-    # ========================================================
-    # CREATE PDF
-    # ========================================================
+        from reportlab.lib.pagesizes import A4
+        from reportlab.pdfgen import canvas
+        from reportlab.lib.units import mm
 
-    pdf = canvas.Canvas(
-        report_path,
-        pagesize=A4
-    )
+        response = make_response()
 
-    width, height = A4
+        response.headers["Content-Type"] = "application/pdf"
 
-    y = height - 60
-
-    # ========================================================
-    # TITLE
-    # ========================================================
-
-    pdf.setFont(
-        "Helvetica-Bold",
-        20
-    )
-
-    pdf.drawString(
-        50,
-        y,
-        "Academic Document Verification Report"
-    )
-
-    y -= 35
-
-    pdf.setFont(
-        "Helvetica",
-        10
-    )
-
-    pdf.drawString(
-        50,
-        y,
-        "Authenticity Validator for Academia"
-    )
-
-    y -= 35
-
-    # ========================================================
-    # DOCUMENT INFORMATION
-    # ========================================================
-
-    pdf.setFont(
-        "Helvetica-Bold",
-        13
-    )
-
-    pdf.drawString(
-        50,
-        y,
-        "Document Information"
-    )
-
-    y -= 25
-
-    pdf.setFont(
-        "Helvetica",
-        10
-    )
-
-    document_information = [
-
-        (
-            "File Name",
-            filename
-        ),
-
-        (
-            "Candidate Name",
-            candidate_name
-        ),
-
-        (
-            "Register Number",
-            register_number
-        ),
-
-        (
-            "Date of Birth",
-            dob
-        ),
-
-        (
-            "Document Type",
-            document_type
-        ),
-
-        (
-            "Reference Document",
-            reference
+        response.headers[
+            "Content-Disposition"
+        ] = (
+            f'attachment; filename="verification_report.pdf"'
         )
-    ]
 
-    for label, value in document_information:
+        c = canvas.Canvas(
+            response,
+            pagesize=A4
+        )
 
-        pdf.drawString(
-            60,
+        width, height = A4
+
+        y = height - 30 * mm
+
+        # ----------------------------------------------------
+        # TITLE
+        # ----------------------------------------------------
+
+        c.setFont(
+            "Helvetica-Bold",
+            18
+        )
+
+        c.drawString(
+            20 * mm,
             y,
-            f"{label}: {value}"
+            "Academic Document Verification Report"
         )
 
-        y -= 18
+        y -= 15 * mm
 
-    # ========================================================
-    # RESULTS
-    # ========================================================
-
-    y -= 15
-
-    pdf.setFont(
-        "Helvetica-Bold",
-        13
-    )
-
-    pdf.drawString(
-        50,
-        y,
-        "Verification Results"
-    )
-
-    y -= 25
-
-    pdf.setFont(
-        "Helvetica",
-        10
-    )
-
-    verification_results = [
-
-        (
-            "Overall Score",
-            f"{overall_score}%"
-        ),
-
-        (
-            "Final Status",
-            status
-        ),
-
-        (
-            "Verification Score",
-            f"{verification_score}%"
-        ),
-
-        (
-            "Reference Similarity",
-            f"{similarity}%"
-        ),
-
-        (
-            "ML Anomaly Score",
-            f"{ml_score}%"
-        ),
-
-        (
-            "Image Quality",
-            image_quality
+        c.setFont(
+            "Helvetica",
+            11
         )
-    ]
 
-    for label, value in verification_results:
+        # ----------------------------------------------------
+        # DETAILS
+        # ----------------------------------------------------
 
-        pdf.drawString(
-            60,
+        report_data = [
+
+            ("Document", filename),
+
+            ("Document Type", document_type),
+
+            ("Candidate Name", candidate_name),
+
+            ("Register Number", register_number),
+
+            ("Date of Birth", dob),
+
+            ("Overall Score", f"{overall_score}%"),
+
+            ("Status", status),
+
+            ("OCR Verification", f"{verification_score}%"),
+
+            ("Visual Similarity", f"{similarity}%"),
+
+            ("ML Pattern Deviation", f"{ml_score}%"),
+
+            ("Image Quality", image_quality),
+
+            ("Reference", reference),
+        ]
+
+        for label, value in report_data:
+
+            c.setFont(
+                "Helvetica-Bold",
+                10
+            )
+
+            c.drawString(
+                20 * mm,
+                y,
+                label + ":"
+            )
+
+            c.setFont(
+                "Helvetica",
+                10
+            )
+
+            c.drawString(
+                65 * mm,
+                y,
+                str(value)
+            )
+
+            y -= 8 * mm
+
+            if y < 25 * mm:
+
+                c.showPage()
+
+                y = height - 25 * mm
+
+                c.setFont(
+                    "Helvetica",
+                    10
+                )
+
+        # ----------------------------------------------------
+        # DISCLAIMER
+        # ----------------------------------------------------
+
+        y -= 5 * mm
+
+        c.setFont(
+            "Helvetica-Bold",
+            11
+        )
+
+        c.drawString(
+            20 * mm,
             y,
-            f"{label}: {value}"
+            "Disclaimer"
         )
 
-        y -= 18
+        y -= 8 * mm
 
-    # ========================================================
-    # DISCLAIMER
-    # ========================================================
-
-    y -= 20
-
-    pdf.setFont(
-        "Helvetica-Bold",
-        11
-    )
-
-    pdf.drawString(
-        50,
-        y,
-        "Important Note"
-    )
-
-    y -= 20
-
-    pdf.setFont(
-        "Helvetica",
-        8
-    )
-
-    disclaimer_lines = [
-
-        "This system provides automated screening based on OCR,",
-
-        "document structure, visual similarity, image quality,",
-
-        "academic consistency and reference-based pattern analysis.",
-
-        "",
-
-        "An anomaly or suspicious result does not by itself prove",
-
-        "that a document is fake or altered. Manual verification",
-
-        "by the relevant educational institution is recommended."
-    ]
-
-    for line in disclaimer_lines:
-
-        pdf.drawString(
-            60,
-            y,
-            line
+        c.setFont(
+            "Helvetica",
+            9
         )
 
-        y -= 13
-
-    # ========================================================
-    # GENERATED DATE
-    # ========================================================
-
-    y -= 15
-
-    pdf.setFont(
-        "Helvetica",
-        8
-    )
-
-    pdf.drawString(
-        50,
-        y,
-        "Generated: "
-        + datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
+        disclaimer = (
+            "This report is an automated screening result. "
+            "It does not independently prove that a document "
+            "is genuine or fraudulent. Final verification "
+            "should be performed through the appropriate "
+            "educational institution or authorized system."
         )
-    )
 
-    pdf.save()
+        # Wrap text
+        words = disclaimer.split()
 
-    return send_file(
-        report_path,
-        as_attachment=True,
-        download_name=report_name,
-        mimetype="application/pdf"
-    )
+        line = ""
+
+        for word in words:
+
+            test_line = line + " " + word
+
+            if len(test_line) > 90:
+
+                c.drawString(
+                    20 * mm,
+                    y,
+                    line.strip()
+                )
+
+                y -= 5 * mm
+
+                line = word
+
+            else:
+
+                line = test_line
+
+        if line:
+
+            c.drawString(
+                20 * mm,
+                y,
+                line.strip()
+            )
+
+        c.save()
+
+        return response
+
+    except Exception as e:
+
+        return f"Could not generate report: {e}", 500
 
 
 # ============================================================
-# ERROR HANDLERS
-# ============================================================
-
-@app.errorhandler(413)
-def file_too_large(error):
-
-    return (
-        "File is too large. Maximum allowed size is 20 MB.",
-        413
-    )
-
-
-@app.errorhandler(404)
-def page_not_found(error):
-
-    return (
-        "Page not found.",
-        404
-    )
-
-
-@app.errorhandler(500)
-def internal_server_error(error):
-
-    return (
-        "An internal server error occurred.",
-        500
-    )
-
-
-# ============================================================
-# START APPLICATION
+# RUN APP
 # ============================================================
 
 if __name__ == "__main__":
-
-    print("=" * 60)
-    print("AUTHENTICITY VALIDATOR FOR ACADEMIA")
-    print("=" * 60)
-
-    print(
-        "Project folder:",
-        BASE_DIR
-    )
-
-    print(
-        "Upload folder:",
-        UPLOAD_FOLDER
-    )
-
-    print(
-        "Reference folder:",
-        REFERENCE_FOLDER
-    )
-
-    print(
-        "Database:",
-        DATABASE
-    )
-
-    print(
-        "Server: http://127.0.0.1:5000"
-    )
-
-    print("=" * 60)
 
     app.run(
         debug=True,
