@@ -560,59 +560,64 @@
 
 
     <!-- VERIFICATION CHECKS -->
-    <div class="card">
+<div class="section-card">
+    <div class="section-title">
+        <span>✅</span>
+        <h2>Verification Checks</h2>
+    </div>
 
-        <h2>✅ Verification Checks</h2>
+    <div class="verification-grid">
 
-        {% if verification_checks %}
+        {% for key, check in verification_checks.items() %}
 
-            <ul class="check-list">
+        <div class="verification-item">
 
-                {% for check_name, check_value in verification_checks.items() %}
+            <div class="verification-header">
 
-                    <li>
+                <span class="verification-label">
+                    {% if key == "candidate_name" %}
+                        Candidate Name
+                    {% elif key == "register_number" %}
+                        Register Number
+                    {% elif key == "date_of_birth" %}
+                        Date of Birth
+                    {% elif key == "academic_information" %}
+                        Academic Information
+                    {% elif key == "document_identifier" %}
+                        Document Identifier
+                    {% else %}
+                        {{ key.replace("_", " ").title() }}
+                    {% endif %}
+                </span>
 
-                        <span>
-                            {{ check_name }}
-                        </span>
+                {% if check.status == "PASS" %}
+                    <span class="check-status pass">✓ PASS</span>
+                {% elif check.status == "NEEDS REVIEW" %}
+                    <span class="check-status review">⚠ REVIEW</span>
+                {% else %}
+                    <span class="check-status fail">✕ FAIL</span>
+                {% endif %}
 
-                        {% set check_lower = check_value|string|lower %}
-
-                        {% if 'pass' in check_lower or 'valid' in check_lower or 'verified' in check_lower %}
-
-                            <span class="pass">
-                                ✓ {{ check_value }}
-                            </span>
-
-                        {% elif 'not detected' in check_lower or 'fail' in check_lower or 'invalid' in check_lower %}
-
-                            <span class="fail">
-                                ✗ {{ check_value }}
-                            </span>
-
-                        {% else %}
-
-                            <span class="review">
-                                ⚠ {{ check_value }}
-                            </span>
-
-                        {% endif %}
-
-                    </li>
-
-                {% endfor %}
-
-            </ul>
-
-        {% else %}
-
-            <div class="highlight warning-box">
-                No detailed verification checks were returned by the verification module.
             </div>
 
-        {% endif %}
+            {% if check.value %}
+                <div class="verification-value">
+                    {{ check.value }}
+                </div>
+            {% endif %}
+
+            {% if check.message %}
+                <div class="verification-message">
+                    {{ check.message }}
+                </div>
+            {% endif %}
+
+        </div>
+
+        {% endfor %}
 
     </div>
+</div>
 
 
     <!-- ACADEMIC CONSISTENCY -->
