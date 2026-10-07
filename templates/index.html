@@ -1,21 +1,1941 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Academic Authenticity Validator</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Academic Document Verification | AI Validator</title>
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet">
+
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+
+        body {
+
+            font-family: "Inter", sans-serif;
+
+            background:
+                radial-gradient(
+                    circle at 15% 20%,
+                    rgba(37, 99, 235, 0.18),
+                    transparent 30%
+                ),
+
+                radial-gradient(
+                    circle at 85% 30%,
+                    rgba(124, 58, 237, 0.16),
+                    transparent 30%
+                ),
+
+                #050816;
+
+            color: #f8fafc;
+
+            overflow-x: hidden;
+        }
+
+
+        /* =================================================
+           BACKGROUND
+        ================================================= */
+
+        .background-grid {
+
+            position: fixed;
+
+            inset: 0;
+
+            pointer-events: none;
+
+            background-image:
+
+                linear-gradient(
+                    rgba(255,255,255,0.025) 1px,
+                    transparent 1px
+                ),
+
+                linear-gradient(
+                    90deg,
+                    rgba(255,255,255,0.025) 1px,
+                    transparent 1px
+                );
+
+            background-size: 55px 55px;
+
+            mask-image:
+                linear-gradient(
+                    to bottom,
+                    black,
+                    transparent
+                );
+
+            z-index: -2;
+        }
+
+
+        .glow {
+
+            position: fixed;
+
+            width: 450px;
+            height: 450px;
+
+            border-radius: 50%;
+
+            filter: blur(120px);
+
+            opacity: 0.15;
+
+            pointer-events: none;
+
+            z-index: -1;
+        }
+
+
+        .glow.one {
+
+            background: #2563eb;
+
+            top: 100px;
+            left: -150px;
+        }
+
+
+        .glow.two {
+
+            background: #9333ea;
+
+            top: 500px;
+            right: -150px;
+        }
+
+
+        /* =================================================
+           NAVBAR
+        ================================================= */
+
+        nav {
+
+            position: fixed;
+
+            top: 18px;
+
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            width: min(1150px, 92%);
+
+            padding: 14px 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            background:
+                rgba(15, 23, 42, 0.72);
+
+            backdrop-filter: blur(20px);
+
+            border: 1px solid
+                rgba(255,255,255,0.09);
+
+            border-radius: 18px;
+
+            z-index: 100;
+        }
+
+
+        .brand {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
+            font-size: 17px;
+
+            font-weight: 800;
+
+            letter-spacing: -0.4px;
+        }
+
+
+        .brand-icon {
+
+            width: 38px;
+            height: 38px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 11px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+
+            box-shadow:
+                0 0 25px
+                rgba(59,130,246,0.35);
+
+            font-size: 19px;
+        }
+
+
+        .nav-links {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 28px;
+        }
+
+
+        .nav-links a {
+
+            color: #94a3b8;
+
+            text-decoration: none;
+
+            font-size: 13px;
+
+            font-weight: 600;
+
+            transition: 0.3s;
+        }
+
+
+        .nav-links a:hover {
+
+            color: white;
+        }
+
+
+        .nav-button {
+
+            text-decoration: none;
+
+            color: white;
+
+            padding: 10px 17px;
+
+            border-radius: 10px;
+
+            font-size: 12px;
+
+            font-weight: 800;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #4f46e5
+                );
+
+            box-shadow:
+                0 8px 25px
+                rgba(37,99,235,0.25);
+
+            transition: 0.3s;
+        }
+
+
+        .nav-button:hover {
+
+            transform: translateY(-2px);
+
+            box-shadow:
+                0 12px 35px
+                rgba(37,99,235,0.4);
+        }
+
+
+        /* =================================================
+           HERO
+        ================================================= */
+
+        .hero {
+
+            min-height: 100vh;
+
+            padding:
+                150px 7% 90px;
+
+            display: grid;
+
+            grid-template-columns:
+                1.1fr 0.9fr;
+
+            align-items: center;
+
+            gap: 70px;
+
+            max-width: 1400px;
+
+            margin: auto;
+        }
+
+
+        .status-pill {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 9px;
+
+            padding: 8px 13px;
+
+            border-radius: 999px;
+
+            background:
+                rgba(34,197,94,0.08);
+
+            border:
+                1px solid
+                rgba(34,197,94,0.2);
+
+            color: #86efac;
+
+            font-size: 11px;
+
+            font-weight: 800;
+
+            letter-spacing: 0.8px;
+
+            margin-bottom: 25px;
+        }
+
+
+        .status-dot {
+
+            width: 7px;
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #22c55e;
+
+            box-shadow:
+                0 0 12px #22c55e;
+
+            animation: pulse 1.7s infinite;
+        }
+
+
+        @keyframes pulse {
+
+            0%,100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.75);
+            }
+        }
+
+
+        .hero h1 {
+
+            font-size:
+                clamp(48px, 6vw, 82px);
+
+            line-height: 0.98;
+
+            letter-spacing: -4px;
+
+            font-weight: 900;
+
+            max-width: 760px;
+        }
+
+
+        .gradient-text {
+
+            background:
+                linear-gradient(
+                    100deg,
+                    #60a5fa,
+                    #818cf8,
+                    #c084fc
+                );
+
+            -webkit-background-clip: text;
+
+            background-clip: text;
+
+            color: transparent;
+        }
+
+
+        .hero-description {
+
+            margin-top: 28px;
+
+            max-width: 620px;
+
+            color: #94a3b8;
+
+            font-size: 16px;
+
+            line-height: 1.8;
+        }
+
+
+        .hero-buttons {
+
+            display: flex;
+
+            gap: 14px;
+
+            margin-top: 35px;
+
+            flex-wrap: wrap;
+        }
+
+
+        .primary-button {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            text-decoration: none;
+
+            color: white;
+
+            padding: 16px 24px;
+
+            border-radius: 13px;
+
+            font-size: 13px;
+
+            font-weight: 800;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+
+            box-shadow:
+                0 15px 45px
+                rgba(37,99,235,0.28);
+
+            transition: 0.3s;
+        }
+
+
+        .primary-button:hover {
+
+            transform:
+                translateY(-4px)
+                scale(1.02);
+
+            box-shadow:
+                0 20px 55px
+                rgba(124,58,237,0.35);
+        }
+
+
+        .secondary-button {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            text-decoration: none;
+
+            color: #cbd5e1;
+
+            padding: 16px 23px;
+
+            border-radius: 13px;
+
+            border:
+                1px solid
+                rgba(255,255,255,0.1);
+
+            background:
+                rgba(255,255,255,0.035);
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            transition: 0.3s;
+        }
+
+
+        .secondary-button:hover {
+
+            background:
+                rgba(255,255,255,0.08);
+
+            transform:
+                translateY(-3px);
+        }
+
+
+        /* =================================================
+           HERO VISUAL
+        ================================================= */
+
+        .visual-area {
+
+            position: relative;
+
+            min-height: 520px;
+
+            display: grid;
+
+            place-items: center;
+        }
+
+
+        .orbit {
+
+            position: absolute;
+
+            width: 440px;
+            height: 440px;
+
+            border-radius: 50%;
+
+            border:
+                1px solid
+                rgba(96,165,250,0.12);
+
+            animation:
+                rotate 18s linear infinite;
+        }
+
+
+        .orbit::before {
+
+            content: "";
+
+            position: absolute;
+
+            width: 9px;
+            height: 9px;
+
+            border-radius: 50%;
+
+            background: #60a5fa;
+
+            box-shadow:
+                0 0 25px #60a5fa;
+
+            top: 42px;
+            left: 45px;
+        }
+
+
+        @keyframes rotate {
+
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+
+        .document-card {
+
+            width: 310px;
+
+            min-height: 400px;
+
+            padding: 25px;
+
+            border-radius: 24px;
+
+            position: relative;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(30,41,59,0.95),
+                    rgba(15,23,42,0.92)
+                );
+
+            border:
+                1px solid
+                rgba(255,255,255,0.12);
+
+            box-shadow:
+
+                0 30px 80px
+                rgba(0,0,0,0.45),
+
+                0 0 80px
+                rgba(59,130,246,0.13);
+
+            transform:
+                perspective(900px)
+                rotateY(-8deg)
+                rotateX(4deg);
+
+            animation:
+                float 5s ease-in-out infinite;
+        }
+
+
+        @keyframes float {
+
+            0%,100% {
+                transform:
+                    perspective(900px)
+                    rotateY(-8deg)
+                    rotateX(4deg)
+                    translateY(0);
+            }
+
+            50% {
+                transform:
+                    perspective(900px)
+                    rotateY(-8deg)
+                    rotateX(4deg)
+                    translateY(-13px);
+            }
+        }
+
+
+        .doc-top {
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            margin-bottom: 25px;
+        }
+
+
+        .doc-logo {
+
+            width: 45px;
+            height: 45px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 12px;
+
+            background:
+                rgba(59,130,246,0.12);
+
+            border:
+                1px solid
+                rgba(96,165,250,0.2);
+
+            font-size: 21px;
+        }
+
+
+        .verified {
+
+            padding: 7px 10px;
+
+            border-radius: 8px;
+
+            background:
+                rgba(34,197,94,0.1);
+
+            color: #4ade80;
+
+            font-size: 9px;
+
+            font-weight: 800;
+
+            letter-spacing: 0.7px;
+        }
+
+
+        .doc-title {
+
+            font-size: 16px;
+
+            font-weight: 800;
+
+            margin-bottom: 6px;
+        }
+
+
+        .doc-subtitle {
+
+            color: #64748b;
+
+            font-size: 10px;
+
+            margin-bottom: 30px;
+        }
+
+
+        .doc-line {
+
+            height: 8px;
+
+            border-radius: 20px;
+
+            background:
+                rgba(148,163,184,0.1);
+
+            margin: 13px 0;
+        }
+
+
+        .doc-line.short {
+            width: 55%;
+        }
+
+
+        .doc-line.medium {
+            width: 75%;
+        }
+
+
+        .doc-line.long {
+            width: 95%;
+        }
+
+
+        .scan-box {
+
+            position: absolute;
+
+            left: 18px;
+            right: 18px;
+
+            top: 115px;
+
+            height: 2px;
+
+            background:
+                #60a5fa;
+
+            box-shadow:
+                0 0 18px #60a5fa;
+
+            animation:
+                scan 3s ease-in-out infinite;
+        }
+
+
+        @keyframes scan {
+
+            0%,100% {
+                top: 110px;
+            }
+
+            50% {
+                top: 330px;
+            }
+        }
+
+
+        .score-circle {
+
+            position: absolute;
+
+            width: 92px;
+            height: 92px;
+
+            border-radius: 50%;
+
+            right: -35px;
+
+            bottom: 60px;
+
+            display: grid;
+
+            place-items: center;
+
+            background:
+                #0f172a;
+
+            border:
+                5px solid
+                #4ade80;
+
+            box-shadow:
+                0 0 35px
+                rgba(74,222,128,0.25);
+        }
+
+
+        .score-circle strong {
+
+            font-size: 22px;
+        }
+
+
+        .score-circle span {
+
+            display: block;
+
+            font-size: 7px;
+
+            color: #64748b;
+
+            text-align: center;
+        }
+
+
+        /* =================================================
+           STATS
+        ================================================= */
+
+        .stats {
+
+            max-width: 1150px;
+
+            margin: 0 auto;
+
+            padding: 0 5% 110px;
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 15px;
+        }
+
+
+        .stat-card {
+
+            padding: 25px;
+
+            border-radius: 17px;
+
+            background:
+                rgba(15,23,42,0.55);
+
+            border:
+                1px solid
+                rgba(255,255,255,0.07);
+
+            transition: 0.3s;
+        }
+
+
+        .stat-card:hover {
+
+            transform:
+                translateY(-5px);
+
+            border-color:
+                rgba(96,165,250,0.25);
+        }
+
+
+        .stat-number {
+
+            font-size: 28px;
+
+            font-weight: 900;
+
+            letter-spacing: -1px;
+        }
+
+
+        .stat-label {
+
+            color: #64748b;
+
+            font-size: 11px;
+
+            margin-top: 6px;
+
+            font-weight: 600;
+        }
+
+
+        /* =================================================
+           SECTION
+        ================================================= */
+
+        .section {
+
+            max-width: 1150px;
+
+            margin: auto;
+
+            padding:
+                100px 5%;
+        }
+
+
+        .section-heading {
+
+            text-align: center;
+
+            max-width: 700px;
+
+            margin:
+                0 auto 55px;
+        }
+
+
+        .eyebrow {
+
+            color: #60a5fa;
+
+            font-size: 10px;
+
+            font-weight: 900;
+
+            letter-spacing: 2px;
+
+            text-transform: uppercase;
+
+            margin-bottom: 15px;
+        }
+
+
+        .section-heading h2 {
+
+            font-size:
+                clamp(32px, 4vw, 50px);
+
+            letter-spacing: -2px;
+
+            line-height: 1.05;
+        }
+
+
+        .section-heading p {
+
+            margin-top: 18px;
+
+            color: #64748b;
+
+            line-height: 1.7;
+
+            font-size: 14px;
+        }
+
+
+        /* =================================================
+           FEATURES
+        ================================================= */
+
+        .features {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 16px;
+        }
+
+
+        .feature-card {
+
+            position: relative;
+
+            padding: 32px;
+
+            border-radius: 22px;
+
+            background:
+                linear-gradient(
+                    145deg,
+                    rgba(15,23,42,0.85),
+                    rgba(15,23,42,0.45)
+                );
+
+            border:
+                1px solid
+                rgba(255,255,255,0.07);
+
+            overflow: hidden;
+
+            transition:
+                transform 0.35s,
+                border 0.35s;
+        }
+
+
+        .feature-card::after {
+
+            content: "";
+
+            position: absolute;
+
+            width: 150px;
+            height: 150px;
+
+            border-radius: 50%;
+
+            background:
+                rgba(59,130,246,0.08);
+
+            filter: blur(40px);
+
+            right: -70px;
+            top: -70px;
+        }
+
+
+        .feature-card:hover {
+
+            transform:
+                translateY(-7px);
+
+            border-color:
+                rgba(96,165,250,0.25);
+        }
+
+
+        .feature-icon {
+
+            width: 52px;
+            height: 52px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 15px;
+
+            background:
+                rgba(59,130,246,0.1);
+
+            border:
+                1px solid
+                rgba(96,165,250,0.15);
+
+            font-size: 23px;
+
+            margin-bottom: 25px;
+        }
+
+
+        .feature-card h3 {
+
+            font-size: 18px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .feature-card p {
+
+            color: #64748b;
+
+            font-size: 13px;
+
+            line-height: 1.75;
+        }
+
+
+        /* =================================================
+           WORKFLOW
+        ================================================= */
+
+        .workflow {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 20px;
+
+            position: relative;
+        }
+
+
+        .step {
+
+            text-align: center;
+
+            padding: 30px 20px;
+        }
+
+
+        .step-number {
+
+            width: 58px;
+            height: 58px;
+
+            margin: 0 auto 22px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 50%;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+
+            font-size: 17px;
+
+            font-weight: 900;
+
+            box-shadow:
+                0 10px 35px
+                rgba(37,99,235,0.25);
+        }
+
+
+        .step h3 {
+
+            font-size: 16px;
+
+            margin-bottom: 10px;
+        }
+
+
+        .step p {
+
+            color: #64748b;
+
+            font-size: 12px;
+
+            line-height: 1.7;
+        }
+
+
+        /* =================================================
+           CTA
+        ================================================= */
+
+        .cta {
+
+            max-width: 1050px;
+
+            margin:
+                80px auto 120px;
+
+            padding:
+                70px 40px;
+
+            text-align: center;
+
+            border-radius: 30px;
+
+            position: relative;
+
+            overflow: hidden;
+
+            background:
+
+                radial-gradient(
+                    circle at center,
+                    rgba(59,130,246,0.18),
+                    transparent 55%
+                ),
+
+                rgba(15,23,42,0.7);
+
+            border:
+                1px solid
+                rgba(96,165,250,0.15);
+
+            box-shadow:
+                0 30px 100px
+                rgba(0,0,0,0.3);
+        }
+
+
+        .cta h2 {
+
+            font-size:
+                clamp(32px, 5vw, 55px);
+
+            letter-spacing: -2px;
+
+            margin-bottom: 17px;
+        }
+
+
+        .cta p {
+
+            color: #64748b;
+
+            max-width: 600px;
+
+            margin:
+                0 auto 30px;
+
+            line-height: 1.7;
+
+            font-size: 13px;
+        }
+
+
+        /* =================================================
+           FOOTER
+        ================================================= */
+
+        footer {
+
+            border-top:
+                1px solid
+                rgba(255,255,255,0.06);
+
+            padding:
+                35px 7%;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            color: #475569;
+
+            font-size: 11px;
+        }
+
+
+        .footer-brand {
+
+            color: #94a3b8;
+
+            font-weight: 800;
+        }
+
+
+        /* =================================================
+           RESPONSIVE
+        ================================================= */
+
+        @media (max-width: 900px) {
+
+            .hero {
+
+                grid-template-columns: 1fr;
+
+                text-align: center;
+
+                padding-top: 140px;
+            }
+
+
+            .hero-description {
+
+                margin-left: auto;
+                margin-right: auto;
+            }
+
+
+            .hero-buttons {
+
+                justify-content: center;
+            }
+
+
+            .visual-area {
+
+                min-height: 450px;
+            }
+
+
+            .stats {
+
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+        }
+
+
+        @media (max-width: 650px) {
+
+            nav {
+
+                width: 94%;
+            }
+
+
+            .nav-links {
+
+                display: none;
+            }
+
+
+            .hero {
+
+                padding-left: 5%;
+                padding-right: 5%;
+            }
+
+
+            .hero h1 {
+
+                letter-spacing: -2.5px;
+            }
+
+
+            .features {
+
+                grid-template-columns: 1fr;
+            }
+
+
+            .workflow {
+
+                grid-template-columns: 1fr;
+            }
+
+
+            .stats {
+
+                grid-template-columns: 1fr 1fr;
+            }
+
+
+            .document-card {
+
+                width: 270px;
+            }
+
+
+            .orbit {
+
+                width: 350px;
+                height: 350px;
+            }
+
+
+            footer {
+
+                flex-direction: column;
+
+                gap: 10px;
+
+                text-align: center;
+            }
+        }
+
+    </style>
+
 </head>
+
 
 <body>
 
-    <h1>Academic Authenticity Validator</h1>
 
-    <p>
-        AI-assisted academic document verification system
-    </p>
+<div class="background-grid"></div>
 
-    <a href="/upload">
-        <button>Verify Document</button>
+<div class="glow one"></div>
+
+<div class="glow two"></div>
+
+
+<!-- =================================================
+     NAVBAR
+================================================= -->
+
+<nav>
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            🛡️
+        </div>
+
+        AcademicAI
+
+    </div>
+
+
+    <div class="nav-links">
+
+        <a href="#features">
+            Technology
+        </a>
+
+        <a href="#workflow">
+            How It Works
+        </a>
+
+        <a href="/history">
+            History
+        </a>
+
+    </div>
+
+
+    <a href="/upload"
+       class="nav-button">
+
+        VERIFY DOCUMENT
+
     </a>
 
+</nav>
+
+
+<!-- =================================================
+     HERO
+================================================= -->
+
+<section class="hero">
+
+
+    <div class="hero-content">
+
+
+        <div class="status-pill">
+
+            <span class="status-dot"></span>
+
+            AI VERIFICATION ENGINE ONLINE
+
+        </div>
+
+
+        <h1>
+
+            Verify academic documents.
+
+            <span class="gradient-text">
+                Intelligently.
+            </span>
+
+        </h1>
+
+
+        <p class="hero-description">
+
+            An AI-assisted academic document verification
+            platform that analyzes OCR information, visual
+            similarity, academic consistency, image quality
+            and machine-learning anomalies — all in one place.
+
+        </p>
+
+
+        <div class="hero-buttons">
+
+            <a href="/upload"
+               class="primary-button">
+
+                🚀 Start Verification
+
+                <span>→</span>
+
+            </a>
+
+
+            <a href="#features"
+               class="secondary-button">
+
+                Explore Technology
+
+            </a>
+
+        </div>
+
+    </div>
+
+
+    <!-- =================================================
+         VISUAL
+    ================================================= -->
+
+    <div class="visual-area">
+
+
+        <div class="orbit"></div>
+
+
+        <div class="document-card">
+
+
+            <div class="doc-top">
+
+                <div class="doc-logo">
+                    📄
+                </div>
+
+
+                <div class="verified">
+
+                    ● AI SCANNING
+
+                </div>
+
+            </div>
+
+
+            <div class="doc-title">
+
+                Academic Marksheet
+
+            </div>
+
+
+            <div class="doc-subtitle">
+
+                DOCUMENT ANALYSIS PREVIEW
+
+            </div>
+
+
+            <div class="doc-line long"></div>
+
+            <div class="doc-line medium"></div>
+
+            <div class="doc-line short"></div>
+
+            <div class="doc-line long"></div>
+
+            <div class="doc-line medium"></div>
+
+            <div class="doc-line short"></div>
+
+            <div class="doc-line long"></div>
+
+
+            <div class="scan-box"></div>
+
+
+            <div class="score-circle">
+
+                <div>
+
+                    <strong>
+                        AI
+                    </strong>
+
+                    <span>
+                        ANALYSIS
+                    </span>
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =================================================
+     STATS
+================================================= -->
+
+<section class="stats">
+
+
+    <div class="stat-card">
+
+        <div class="stat-number">
+            05+
+        </div>
+
+        <div class="stat-label">
+            Verification Signals
+        </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <div class="stat-number">
+            AI
+        </div>
+
+        <div class="stat-label">
+            Assisted Analysis
+        </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <div class="stat-number">
+            OCR
+        </div>
+
+        <div class="stat-label">
+            Information Extraction
+        </div>
+
+    </div>
+
+
+    <div class="stat-card">
+
+        <div class="stat-number">
+            ML
+        </div>
+
+        <div class="stat-label">
+            Anomaly Detection
+        </div>
+
+    </div>
+
+
+</section>
+
+
+<!-- =================================================
+     FEATURES
+================================================= -->
+
+<section class="section"
+         id="features">
+
+
+    <div class="section-heading">
+
+        <div class="eyebrow">
+            Verification Engine
+        </div>
+
+
+        <h2>
+
+            More than just
+            <span class="gradient-text">
+                OCR.
+            </span>
+
+        </h2>
+
+
+        <p>
+
+            Every uploaded document passes through
+            multiple independent analysis layers before
+            the final verification score is generated.
+
+        </p>
+
+    </div>
+
+
+    <div class="features">
+
+
+        <div class="feature-card">
+
+            <div class="feature-icon">
+                🔎
+            </div>
+
+            <h3>
+                OCR & Information Verification
+            </h3>
+
+            <p>
+
+                Extracts candidate names, register numbers,
+                dates and academic information from uploaded
+                documents and verifies the detected fields.
+
+            </p>
+
+        </div>
+
+
+        <div class="feature-card">
+
+            <div class="feature-icon">
+                👁️
+            </div>
+
+            <h3>
+                Visual Similarity Analysis
+            </h3>
+
+            <p>
+
+                Compares the uploaded document against
+                available reference documents to identify
+                visual differences and similarities.
+
+            </p>
+
+        </div>
+
+
+        <div class="feature-card">
+
+            <div class="feature-icon">
+                🧠
+            </div>
+
+            <h3>
+                ML Anomaly Detection
+            </h3>
+
+            <p>
+
+                Machine-learning based pattern analysis
+                identifies unusual document characteristics
+                compared with reference samples.
+
+            </p>
+
+        </div>
+
+
+        <div class="feature-card">
+
+            <div class="feature-icon">
+                📊
+            </div>
+
+            <h3>
+                Academic Consistency
+            </h3>
+
+            <p>
+
+                Checks extracted academic information for
+                consistency and highlights suspicious or
+                incomplete patterns.
+
+            </p>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =================================================
+     WORKFLOW
+================================================= -->
+
+<section class="section"
+         id="workflow">
+
+
+    <div class="section-heading">
+
+        <div class="eyebrow">
+            Simple Workflow
+        </div>
+
+
+        <h2>
+
+            From document
+            to
+            <span class="gradient-text">
+                insight.
+            </span>
+
+        </h2>
+
+
+        <p>
+
+            The entire verification pipeline is designed
+            to be simple for the user while performing
+            multiple analysis stages behind the scenes.
+
+        </p>
+
+    </div>
+
+
+    <div class="workflow">
+
+
+        <div class="step">
+
+            <div class="step-number">
+                01
+            </div>
+
+            <h3>
+                Upload
+            </h3>
+
+            <p>
+
+                Upload an academic document such as
+                a marksheet, certificate or transcript.
+
+            </p>
+
+        </div>
+
+
+        <div class="step">
+
+            <div class="step-number">
+                02
+            </div>
+
+            <h3>
+                Analyze
+            </h3>
+
+            <p>
+
+                OCR, visual analysis, ML anomaly detection
+                and academic consistency checks run together.
+
+            </p>
+
+        </div>
+
+
+        <div class="step">
+
+            <div class="step-number">
+                03
+            </div>
+
+            <h3>
+                Verify
+            </h3>
+
+            <p>
+
+                Receive a verification score, risk status,
+                extracted information and detailed analysis.
+
+            </p>
+
+        </div>
+
+
+    </div>
+
+</section>
+
+
+<!-- =================================================
+     CTA
+================================================= -->
+
+<div class="cta">
+
+
+    <div class="eyebrow">
+        Ready to Verify?
+    </div>
+
+
+    <h2>
+
+        Put your document
+        <span class="gradient-text">
+            to the test.
+        </span>
+
+    </h2>
+
+
+    <p>
+
+        Upload an academic document and let the
+        verification engine analyze its information,
+        structure, visual characteristics and patterns.
+
+    </p>
+
+
+    <a href="/upload"
+       class="primary-button">
+
+        🚀 START AI VERIFICATION
+
+        <span>→</span>
+
+    </a>
+
+</div>
+
+
+<!-- =================================================
+     FOOTER
+================================================= -->
+
+<footer>
+
+    <div class="footer-brand">
+
+        🛡️ AcademicAI
+
+    </div>
+
+
+    <div>
+
+        AI-Assisted Academic Document Verification
+
+    </div>
+
+
+    <div>
+
+        © 2026
+
+    </div>
+
+</footer>
+
+
 </body>
+
 </html>

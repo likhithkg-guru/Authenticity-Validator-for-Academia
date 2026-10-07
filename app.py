@@ -2,149 +2,129 @@ from flask import (
     Flask,
     render_template,
     request,
-    redirect,
-    url_for,
     send_from_directory,
-    make_response
+    send_file
 )
 
 import os
 import sqlite3
-from datetime import datetime
 
 from utils.ocr import extract_text_from_pdf
 from utils.verifier import verify_document
+from utils.document_classifier import classify_document
 from utils.image_analyzer import analyze_image_quality
 from utils.authenticity import find_best_reference
-from utils.risk_engine import calculate_risk_score, generate_risk_explanation
+
+from utils.risk_engine import (
+    calculate_risk_score,
+    generate_risk_explanation
+)
+
 from utils.ml_detector import analyze_with_ml
 from utils.tampering_detector import analyze_tampering
 from utils.academic_validator import analyze_academic_consistency
-from utils.document_classifier import classify_document
+
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle
+)
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.enums import TA_CENTER
 
 
-# ============================================================
-# APP CONFIGURATION
-# ============================================================
+# =====================================================
+# FLASK APP
+# =====================================================
 
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-REFERENCE_FOLDER = os.path.join(BASE_DIR, "reference_documents")
-REPORT_FOLDER = os.path.join(BASE_DIR, "reports")
-
-DATABASE = os.path.join(BASE_DIR, "verification_history.db")
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(REFERENCE_FOLDER, exist_ok=True)
-os.makedirs(REPORT_FOLDER, exist_ok=True)
+UPLOAD_FOLDER = "uploads"
+REFERENCE_FOLDER = "reference_documents"
+REPORT_FOLDER = "reports"
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-# ============================================================
+# =====================================================
+# CREATE FOLDERS
+# =====================================================
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(REFERENCE_FOLDER, exist_ok=True)
+os.makedirs(REPORT_FOLDER, exist_ok=True)
+os.makedirs("static/uploads", exist_ok=True)
+
+
+# =====================================================
 # DATABASE
-# ============================================================
+# =====================================================
 
-def init_db():
+DATABASE = "verification_history.db"
 
-    conn = sqlite3.connect(DATABASE)
 
-    cursor = conn.cursor()
+def init_database():
+
+    connection = sqlite3.connect(DATABASE)
+
+    cursor = connection.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS verification_history (
+
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+
             filename TEXT,
+
             candidate_name TEXT,
+
             register_number TEXT,
-            dob TEXT,
-            document_type TEXT,
+
+            verification_score REAL,
+
+            similarity_score REAL,
+
+            ml_anomaly_score REAL,
+
             overall_score REAL,
+
             status TEXT,
-            created_at TEXT
+
+            image_quality TEXT,
+
+            reference_filename TEXT,
+
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
         )
     """)
 
-    conn.commit()
-    conn.close()
+    connection.commit()
+
+    connection.close()
 
 
-init_db()
+init_database()
 
 
-# ============================================================
-# HELPERS
-# ============================================================
-
-def normalize_verification_result(result):
-
-    """
-    Makes verifier output compatible with the application.
-
-    New verifier returns a dictionary.
-    Older versions may return tuple/list.
-    """
-
-    if isinstance(result, dict):
-        return result
-
-    if isinstance(result, (tuple, list)):
-
-        if len(result) >= 2:
-
-            first = result[0]
-            second = result[1]
-
-            if isinstance(first, dict):
-                data = first.copy()
-
-                if "score" not in data:
-                    data["score"] = second
-
-                if "verification_score" not in data:
-                    data["verification_score"] = second
-
-                return data
-
-    return {
-        "available": False,
-        "status": "INSUFFICIENT INFORMATION",
-        "score": 0,
-        "verification_score": 0,
-        "details": {},
-        "checks": {},
-        "verification_checks": {},
-        "suspicious_count": 0,
-        "suspicious_indicators": [],
-        "explanation": "Verification module did not return a valid result."
-    }
-
-
-def safe_float(value, default=0.0):
-
-    try:
-        return float(value)
-
-    except (TypeError, ValueError):
-        return default
-
-
-# ============================================================
+# =====================================================
 # HOME
-# ============================================================
+# =====================================================
 
 @app.route("/")
-def index():
+def home():
 
     return render_template("index.html")
 
 
-# ============================================================
+# =====================================================
 # UPLOAD PAGE
-# ============================================================
+# =====================================================
 
 @app.route("/upload")
 def upload():
@@ -152,9 +132,9 @@ def upload():
     return render_template("upload.html")
 
 
-# ============================================================
-# SERVE UPLOADED FILES
-# ============================================================
+# =====================================================
+# UPLOADED DOCUMENT
+# =====================================================
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
@@ -165,9 +145,9 @@ def uploaded_file(filename):
     )
 
 
-# ============================================================
-# SERVE REFERENCE DOCUMENTS
-# ============================================================
+# =====================================================
+# REFERENCE DOCUMENT
+# =====================================================
 
 @app.route("/references/<filename>")
 def reference_file(filename):
@@ -178,71 +158,223 @@ def reference_file(filename):
     )
 
 
-# ============================================================
-# ANALYZE DOCUMENT
-# ============================================================
+# =====================================================
+# NORMALIZE VERIFICATION RESULT
+# =====================================================
 
-@app.route("/analyze", methods=["POST"])
+def normalize_verification_result(result):
+
+    """
+    Supports both dictionary-style and tuple/list-style
+    verification results.
+    """
+
+    # -------------------------------------------------
+    # DICTIONARY RESULT
+    # -------------------------------------------------
+
+    if isinstance(result, dict):
+
+        details = result.get(
+            "details",
+            {}
+        )
+
+        if not isinstance(details, dict):
+            details = {}
+
+        checks = result.get(
+            "checks",
+            result.get(
+                "verification_checks",
+                {}
+            )
+        )
+
+        if not isinstance(checks, dict):
+            checks = {}
+
+        score = result.get(
+            "verification_score",
+            result.get(
+                "overall_score",
+                result.get(
+                    "score",
+                    0
+                )
+            )
+        )
+
+        try:
+            score = float(score)
+        except:
+            score = 0.0
+
+        return {
+            "details": details,
+            "checks": checks,
+            "score": score,
+            "status": result.get(
+                "status",
+                result.get(
+                    "verification_status",
+                    "UNKNOWN"
+                )
+            ),
+            "suspicious_count": result.get(
+                "suspicious_count",
+                0
+            ),
+            "suspicious_indicators": result.get(
+                "suspicious_indicators",
+                []
+            ),
+            "explanation": result.get(
+                "explanation",
+                ""
+            )
+        }
+
+
+    # -------------------------------------------------
+    # TUPLE / LIST RESULT
+    # -------------------------------------------------
+
+    if isinstance(result, (tuple, list)):
+
+        details = (
+            result[0]
+            if len(result) > 0
+            else {}
+        )
+
+        score = (
+            result[1]
+            if len(result) > 1
+            else 0
+        )
+
+        status = (
+            result[2]
+            if len(result) > 2
+            else "UNKNOWN"
+        )
+
+        checks = {}
+
+        if isinstance(details, dict):
+
+            checks = details.get(
+                "checks",
+                details.get(
+                    "verification_checks",
+                    {}
+                )
+            )
+
+        try:
+            score = float(score)
+        except:
+            score = 0.0
+
+        return {
+            "details": (
+                details
+                if isinstance(details, dict)
+                else {}
+            ),
+            "checks": (
+                checks
+                if isinstance(checks, dict)
+                else {}
+            ),
+            "score": score,
+            "status": status,
+            "suspicious_count": 0,
+            "suspicious_indicators": [],
+            "explanation": ""
+        }
+
+
+    # -------------------------------------------------
+    # UNKNOWN RESULT
+    # -------------------------------------------------
+
+    return {
+        "details": {},
+        "checks": {},
+        "score": 0.0,
+        "status": "UNKNOWN",
+        "suspicious_count": 0,
+        "suspicious_indicators": [],
+        "explanation": ""
+    }
+
+
+# =====================================================
+# ANALYZE DOCUMENT
+# =====================================================
+
+@app.route(
+    "/analyze",
+    methods=["POST"]
+)
 def analyze():
 
-    # --------------------------------------------------------
+    # -------------------------------------------------
     # CHECK FILE
-    # --------------------------------------------------------
+    # -------------------------------------------------
 
     if "document" not in request.files:
 
-        return redirect(url_for("upload"))
+        return "No document uploaded", 400
+
 
     file = request.files["document"]
 
+
     if file.filename == "":
 
-        return redirect(url_for("upload"))
+        return "No file selected", 400
 
-    # --------------------------------------------------------
+
+    # -------------------------------------------------
     # SAVE FILE
-    # --------------------------------------------------------
-
-    original_filename = file.filename
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-    name, extension = os.path.splitext(original_filename)
-
-    filename = f"{name}_{timestamp}{extension}"
+    # -------------------------------------------------
 
     filepath = os.path.join(
         UPLOAD_FOLDER,
-        filename
+        file.filename
     )
 
     file.save(filepath)
 
-    # --------------------------------------------------------
+
+    # =================================================
     # OCR
-    # --------------------------------------------------------
+    # =================================================
 
-    try:
+    ocr_text = extract_text_from_pdf(
+        filepath
+    )
 
-        ocr_text = extract_text_from_pdf(filepath)
 
-    except Exception as e:
-
-        ocr_text = ""
-
-        print("OCR ERROR:", e)
-
-    # --------------------------------------------------------
+    # =================================================
     # DOCUMENT CLASSIFICATION
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
-        classification = classify_document(ocr_text)
+        classification = classify_document(
+            ocr_text
+        )
 
     except Exception as e:
 
-        print("CLASSIFICATION ERROR:", e)
+        print(
+            "Classification error:",
+            e
+        )
 
         classification = {
             "document_type": "UNKNOWN",
@@ -250,23 +382,45 @@ def analyze():
             "evidence": []
         }
 
+
+    if not isinstance(
+        classification,
+        dict
+    ):
+
+        classification = {}
+
+
     document_type = classification.get(
         "document_type",
-        "UNKNOWN"
+        classification.get(
+            "type",
+            "UNKNOWN"
+        )
     )
 
-    document_confidence = safe_float(
-        classification.get("confidence", 0)
+
+    document_confidence = classification.get(
+        "confidence",
+        classification.get(
+            "score",
+            0
+        )
     )
+
 
     classification_evidence = classification.get(
         "evidence",
-        []
+        classification.get(
+            "keywords",
+            []
+        )
     )
 
-    # --------------------------------------------------------
-    # INFORMATION VERIFICATION
-    # --------------------------------------------------------
+
+    # =================================================
+    # OCR / INFORMATION VERIFICATION
+    # =================================================
 
     try:
 
@@ -274,100 +428,62 @@ def analyze():
             ocr_text
         )
 
-        verification = normalize_verification_result(
-            raw_verification
-        )
-
     except Exception as e:
 
-        print("VERIFICATION ERROR:", e)
+        print(
+            "Verification error:",
+            e
+        )
 
-        verification = {
-            "available": False,
-            "status": "INSUFFICIENT INFORMATION",
-            "score": 0,
-            "verification_score": 0,
-            "details": {},
-            "checks": {},
-            "verification_checks": {},
-            "suspicious_count": 0,
-            "suspicious_indicators": [],
-            "explanation": str(e)
+        raw_verification = {}
+
+
+    verification = normalize_verification_result(
+        raw_verification
+    )
+
+
+    details = verification["details"]
+
+    verification_checks = verification["checks"]
+
+    verification_score = verification["score"]
+
+
+    # -------------------------------------------------
+    # PRESERVE DIRECT EXTRACTED FIELDS
+    # -------------------------------------------------
+
+    if (
+        not details
+        and isinstance(
+            raw_verification,
+            dict
+        )
+    ):
+
+        details = {
+
+            "candidate_name": raw_verification.get(
+                "candidate_name"
+            ),
+
+            "register_number": raw_verification.get(
+                "register_number"
+            ),
+
+            "date_of_birth": raw_verification.get(
+                "date_of_birth",
+                raw_verification.get(
+                    "dob"
+                )
+            )
         }
 
-    # --------------------------------------------------------
-    # EXTRACTED DETAILS
-    # --------------------------------------------------------
 
-    details = verification.get(
-        "details",
-        {}
-    )
-
-    # Safety fallback
-    if not isinstance(details, dict):
-        details = {}
-
-    candidate_name = details.get(
-        "candidate_name",
-        verification.get(
-            "candidate_name",
-            "Not detected"
-        )
-    )
-
-    register_number = details.get(
-        "register_number",
-        verification.get(
-            "register_number",
-            "Not detected"
-        )
-    )
-
-    dob = details.get(
-        "date_of_birth",
-        details.get(
-            "dob",
-            verification.get(
-                "date_of_birth",
-                "Not detected"
-            )
-        )
-    )
-
-    # --------------------------------------------------------
-    # VERIFICATION SCORE
-    # --------------------------------------------------------
-
-    verification_score = safe_float(
-        verification.get(
-            "verification_score",
-            verification.get(
-                "score",
-                0
-            )
-        )
-    )
-
-    # --------------------------------------------------------
-    # VERIFICATION CHECKS
-    # --------------------------------------------------------
-
-    verification_checks = verification.get(
-        "verification_checks",
-        verification.get(
-            "checks",
-            {}
-        )
-    )
-
-    if not isinstance(verification_checks, dict):
-
-        verification_checks = {}
-
-    # --------------------------------------------------------
+    # =================================================
     # IMAGE QUALITY
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
@@ -377,67 +493,87 @@ def analyze():
 
     except Exception as e:
 
-        print("IMAGE QUALITY ERROR:", e)
+        print(
+            "Image analysis error:",
+            e
+        )
 
         image_info = {
+
             "image_quality": "Unknown",
+
             "blur_score": 0,
+
             "width": 0,
-            "height": 0
+
+            "height": 0,
+
+            "error": str(e)
         }
 
-    # --------------------------------------------------------
+
+    if not isinstance(
+        image_info,
+        dict
+    ):
+
+        image_info = {}
+
+
+    # =================================================
     # REFERENCE COMPARISON
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
-        reference_result = find_best_reference(
+        authenticity_info = find_best_reference(
             filepath,
             REFERENCE_FOLDER
         )
 
     except Exception as e:
 
-        print("REFERENCE ERROR:", e)
-
-        reference_result = {}
-
-    reference_filename = None
-    similarity_score = 0.0
-
-    if isinstance(reference_result, dict):
-
-        reference_filename = reference_result.get(
-            "reference_filename",
-            reference_result.get(
-                "filename"
-            )
+        print(
+            "Reference comparison error:",
+            e
         )
 
-        similarity_score = safe_float(
-            reference_result.get(
-                "similarity",
-                reference_result.get(
-                    "similarity_score",
-                    0
-                )
-            )
+        authenticity_info = None
+
+
+    if not isinstance(
+        authenticity_info,
+        dict
+    ):
+
+        authenticity_info = {}
+
+
+    similarity_score = authenticity_info.get(
+        "similarity",
+        0
+    )
+
+
+    try:
+
+        similarity_score = float(
+            similarity_score
         )
 
-    elif isinstance(reference_result, (tuple, list)):
+    except:
 
-        if len(reference_result) >= 2:
+        similarity_score = 0.0
 
-            reference_filename = reference_result[0]
 
-            similarity_score = safe_float(
-                reference_result[1]
-            )
+    reference_filename = authenticity_info.get(
+        "filename"
+    )
 
-    # --------------------------------------------------------
+
+    # =================================================
     # ML ANALYSIS
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
@@ -448,39 +584,64 @@ def analyze():
 
     except Exception as e:
 
-        print("ML ERROR:", e)
+        print(
+            "ML analysis error:",
+            e
+        )
 
         ml_result = {
+
             "available": False,
-            "status": "UNAVAILABLE",
+
             "anomaly_score": 0,
+
+            "status": "NOT AVAILABLE",
+
             "reference_count": 0,
-            "explanation": "ML analysis unavailable."
+
+            "explanation": str(e)
         }
 
-    if not isinstance(ml_result, dict):
 
-        ml_result = {
-            "available": False,
-            "status": "UNAVAILABLE",
-            "anomaly_score": 0,
-            "reference_count": 0,
-            "explanation": "Invalid ML result."
-        }
+    if not isinstance(
+        ml_result,
+        dict
+    ):
 
-    ml_anomaly = safe_float(
-        ml_result.get(
-            "anomaly_score",
-            ml_result.get(
-                "score",
-                0
-            )
+        ml_result = {}
+
+
+    ml_anomaly_score = ml_result.get(
+        "anomaly_score",
+        0
+    )
+
+
+    try:
+
+        ml_anomaly_score = float(
+            ml_anomaly_score
+        )
+
+    except:
+
+        ml_anomaly_score = 0.0
+
+
+    # Keep anomaly score inside valid range
+
+    ml_anomaly_score = max(
+        0.0,
+        min(
+            100.0,
+            ml_anomaly_score
         )
     )
 
-    # --------------------------------------------------------
+
+    # =================================================
     # TAMPERING ANALYSIS
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
@@ -490,20 +651,36 @@ def analyze():
 
     except Exception as e:
 
-        print("TAMPERING ERROR:", e)
+        print(
+            "Tampering analysis error:",
+            e
+        )
 
         tampering_result = {
-            "available": False,
-            "status": "UNAVAILABLE",
+
+            "status": "NOT AVAILABLE",
+
             "tampering_score": 0,
+
             "suspicious_regions": 0,
-            "total_regions": 0,
-            "explanation": "Tampering analysis unavailable."
+
+            "explanation": str(e),
+
+            "indicators": []
         }
 
-    # --------------------------------------------------------
+
+    if not isinstance(
+        tampering_result,
+        dict
+    ):
+
+        tampering_result = {}
+
+
+    # =================================================
     # ACADEMIC CONSISTENCY
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
@@ -513,156 +690,402 @@ def analyze():
 
     except Exception as e:
 
-        print("ACADEMIC VALIDATION ERROR:", e)
+        print(
+            "Academic consistency error:",
+            e
+        )
 
         academic_result = {
-            "available": False,
-            "status": "UNAVAILABLE",
-            "overall_score": 0,
+
+            "status": "NOT AVAILABLE",
+
+            "score": 0,
+
             "suspicious_count": 0,
-            "checks": {},
+
             "suspicious_indicators": [],
-            "explanation": "Academic consistency analysis unavailable."
+
+            "explanation": (
+                "Academic consistency analysis "
+                "could not be completed."
+            ),
+
+            "error": str(e)
         }
 
-    # --------------------------------------------------------
-    # RISK SCORE
-    # --------------------------------------------------------
 
-    image_quality = image_info.get(
-        "image_quality",
-        "Unknown"
+    if not isinstance(
+        academic_result,
+        dict
+    ):
+
+        academic_result = {}
+
+
+    # =================================================
+    # ACADEMIC SCORE
+    # =================================================
+
+    academic_score = academic_result.get(
+        "score",
+        academic_result.get(
+            "overall_score",
+            0
+        )
     )
 
-    quality_score = 0
-
-    if image_quality == "Good":
-        quality_score = 100
-
-    elif image_quality == "Moderate":
-        quality_score = 70
-
-    elif image_quality == "Low":
-        quality_score = 40
-
-    # --------------------------------------------------------
-    # CALCULATE OVERALL SCORE
-    # --------------------------------------------------------
 
     try:
 
-        overall_score = calculate_risk_score(
-            verification_score,
-            similarity_score,
-            ml_anomaly,
-            quality_score
+        academic_score = float(
+            academic_score
+        )
+
+    except:
+
+        academic_score = 0.0
+
+
+    academic_score = max(
+        0.0,
+        min(
+            100.0,
+            academic_score
+        )
+    )
+
+
+    academic_status = academic_result.get(
+        "status",
+        "UNKNOWN"
+    )
+
+
+    academic_indicators = academic_result.get(
+        "suspicious_indicators",
+        []
+    )
+
+
+    academic_explanation = academic_result.get(
+        "explanation",
+        ""
+    )
+
+
+    # =================================================
+    # RISK SCORE
+    # =================================================
+
+    quality_score = (
+
+        100
+
+        if image_info.get(
+            "image_quality"
+        ) == "Good"
+
+        else 60
+
+        if image_info.get(
+            "image_quality"
+        ) == "Moderate"
+
+        else 30
+
+        if image_info.get(
+            "image_quality"
+        ) == "Low"
+
+        else 0
+    )
+
+
+    # -------------------------------------------------
+    # CALCULATE RISK SCORE
+    # -------------------------------------------------
+
+    try:
+
+        risk_result = calculate_risk_score(
+
+            verification_score=verification_score,
+
+            similarity_score=similarity_score,
+
+            ml_anomaly_score=ml_anomaly_score,
+
+            quality_score=quality_score
+
         )
 
     except Exception as e:
 
-        print("RISK SCORE ERROR:", e)
+        print(
+            "Risk score calculation error:",
+            e
+        )
 
-        overall_score = 0
+        risk_result = None
 
-    overall_score = round(
-        safe_float(overall_score),
-        2
-    )
 
-    # --------------------------------------------------------
-    # FINAL STATUS
-    # --------------------------------------------------------
+    # -------------------------------------------------
+    # HANDLE RISK RESULT
+    # -------------------------------------------------
 
-    if overall_score >= 80:
+    if isinstance(
+        risk_result,
+        dict
+    ):
 
-        status = "LOW RISK"
+        overall_score = risk_result.get(
 
-    elif overall_score >= 60:
+            "overall_score",
 
-        status = "NEEDS REVIEW"
+            risk_result.get(
+                "score",
+                0
+            )
+        )
+
+
+        status = risk_result.get(
+
+            "status",
+
+            "NEEDS REVIEW"
+        )
+
 
     else:
 
-        status = "SUSPICIOUS"
+        # -------------------------------------------------
+        # FALLBACK CALCULATION
+        # -------------------------------------------------
 
-    # --------------------------------------------------------
+        ml_consistency = (
+            100 - ml_anomaly_score
+        )
+
+
+        overall_score = (
+
+            (verification_score * 0.30)
+
+            + (similarity_score * 0.30)
+
+            + (ml_consistency * 0.25)
+
+            + (quality_score * 0.15)
+
+        )
+
+
+        if overall_score >= 80:
+
+            status = "LOW RISK"
+
+        elif overall_score >= 60:
+
+            status = "NEEDS REVIEW"
+
+        else:
+
+            status = "SUSPICIOUS"
+
+
+    # -------------------------------------------------
+    # MAKE SURE SCORE IS NUMERIC
+    # -------------------------------------------------
+
+    try:
+
+        overall_score = float(
+            overall_score
+        )
+
+    except:
+
+        overall_score = 0.0
+
+
+    # Keep score between 0 and 100
+
+    overall_score = max(
+        0.0,
+        min(
+            100.0,
+            overall_score
+        )
+    )
+
+
+    # =================================================
     # RISK EXPLANATION
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
         risk_explanation = generate_risk_explanation(
-            verification_score,
-            similarity_score,
-            ml_anomaly,
-            image_quality
+
+            verification_score=verification_score,
+
+            similarity_score=similarity_score,
+
+            ml_anomaly_score=ml_anomaly_score,
+
+            image_quality=image_info.get(
+                "image_quality",
+                "Unknown"
+            ),
+
+            status=status
+
         )
 
-    except Exception:
+    except Exception as e:
+
+        print(
+            "Risk explanation error:",
+            e
+        )
 
         risk_explanation = (
             "Automated analysis completed. "
             "Manual verification is recommended."
         )
 
-    # --------------------------------------------------------
+
+    # =================================================
     # SAVE HISTORY
-    # --------------------------------------------------------
+    # =================================================
 
     try:
 
-        conn = sqlite3.connect(DATABASE)
+        connection = sqlite3.connect(
+            DATABASE
+        )
 
-        cursor = conn.cursor()
+        cursor = connection.cursor()
+
 
         cursor.execute("""
-            INSERT INTO verification_history
-            (
+            INSERT INTO verification_history (
+
                 filename,
+
                 candidate_name,
+
                 register_number,
-                dob,
-                document_type,
+
+                verification_score,
+
+                similarity_score,
+
+                ml_anomaly_score,
+
                 overall_score,
+
                 status,
-                created_at
+
+                image_quality,
+
+                reference_filename
+
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
         """, (
-            filename,
-            candidate_name,
-            register_number,
-            dob,
-            document_type,
+
+            file.filename,
+
+            details.get(
+                "candidate_name",
+                ""
+            ),
+
+            details.get(
+                "register_number",
+                ""
+            ),
+
+            verification_score,
+
+            similarity_score,
+
+            ml_anomaly_score,
+
             overall_score,
+
             status,
-            datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
-            )
+
+            image_info.get(
+                "image_quality",
+                "Unknown"
+            ),
+
+            reference_filename
+
         ))
 
-        conn.commit()
-        conn.close()
+
+        connection.commit()
+
+        connection.close()
+
 
     except Exception as e:
 
-        print("DATABASE ERROR:", e)
+        print(
+            "History database warning:",
+            e
+        )
 
-    # --------------------------------------------------------
-    # PREVIEW URL
-    # --------------------------------------------------------
 
-    uploaded_preview_url = url_for(
-        "uploaded_file",
-        filename=filename
+    # =================================================
+    # URLS
+    # =================================================
+
+    uploaded_preview_url = (
+        "/uploads/"
+        + file.filename
     )
 
-    # --------------------------------------------------------
+
+    reference_url = None
+
+
+    if reference_filename:
+
+        reference_url = (
+            "/references/"
+            + reference_filename
+        )
+
+
+    # =================================================
     # RESULT PAGE
-    # --------------------------------------------------------
+    # =================================================
 
     return render_template(
+
         "result.html",
+
+        filename=file.filename,
+
+        ocr_text=ocr_text,
+
+        details=details,
+
+        verification_checks=verification_checks,
+
+        verification_score=verification_score,
+
+        verification_status=verification.get(
+            "status",
+            "UNKNOWN"
+        ),
 
         overall_score=overall_score,
 
@@ -674,46 +1097,52 @@ def analyze():
 
         classification_evidence=classification_evidence,
 
-        verification_score=verification_score,
-
         similarity_score=similarity_score,
+
+        authenticity_info=authenticity_info,
 
         ml_result=ml_result,
 
+        tampering_result=tampering_result,
+
         image_info=image_info,
-
-        details=details,
-
-        filename=filename,
-
-        verification_checks=verification_checks,
 
         academic_result=academic_result,
 
-        tampering_result=tampering_result,
+        academic_score=academic_score,
+
+        academic_status=academic_status,
+
+        academic_indicators=academic_indicators,
+
+        academic_explanation=academic_explanation,
 
         risk_explanation=risk_explanation,
 
-        ocr_text=ocr_text,
-
         reference_filename=reference_filename,
 
+        reference_url=reference_url,
+
         uploaded_preview_url=uploaded_preview_url
+
     )
 
 
-# ============================================================
+# =====================================================
 # HISTORY
-# ============================================================
+# =====================================================
 
 @app.route("/history")
 def history():
 
-    conn = sqlite3.connect(DATABASE)
+    connection = sqlite3.connect(
+        DATABASE
+    )
 
-    conn.row_factory = sqlite3.Row
+    connection.row_factory = sqlite3.Row
 
-    cursor = conn.cursor()
+    cursor = connection.cursor()
+
 
     cursor.execute("""
         SELECT *
@@ -721,9 +1150,11 @@ def history():
         ORDER BY id DESC
     """)
 
+
     records = cursor.fetchall()
 
-    conn.close()
+    connection.close()
+
 
     return render_template(
         "history.html",
@@ -731,270 +1162,590 @@ def history():
     )
 
 
-# ============================================================
+# =====================================================
 # DOWNLOAD REPORT
-# ============================================================
+# =====================================================
 
 @app.route("/download-report")
 def download_report():
 
     filename = request.args.get(
         "filename",
-        "document.pdf"
+        "document"
     )
+
 
     candidate_name = request.args.get(
         "candidate_name",
         "Not detected"
     )
 
+
     register_number = request.args.get(
         "register_number",
         "Not detected"
     )
+
 
     dob = request.args.get(
         "dob",
         "Not detected"
     )
 
+
     overall_score = request.args.get(
         "overall_score",
         "0"
     )
+
 
     status = request.args.get(
         "status",
         "UNKNOWN"
     )
 
+
     verification_score = request.args.get(
         "verification_score",
         "0"
     )
+
 
     similarity = request.args.get(
         "similarity",
         "0"
     )
 
+
     ml_score = request.args.get(
         "ml_score",
         "0"
     )
+
 
     image_quality = request.args.get(
         "image_quality",
         "Unknown"
     )
 
+
     reference = request.args.get(
         "reference",
         "Not available"
     )
+
 
     document_type = request.args.get(
         "document_type",
         "Unknown"
     )
 
-    try:
 
-        from reportlab.lib.pagesizes import A4
-        from reportlab.pdfgen import canvas
-        from reportlab.lib.units import mm
+    # -------------------------------------------------
+    # REPORT FILE NAME
+    # -------------------------------------------------
 
-        response = make_response()
+    safe_name = os.path.splitext(
+        filename
+    )[0]
 
-        response.headers["Content-Type"] = "application/pdf"
 
-        response.headers[
-            "Content-Disposition"
-        ] = (
-            f'attachment; filename="verification_report.pdf"'
+    report_filename = (
+        safe_name
+        + "_verification_report.pdf"
+    )
+
+
+    report_path = os.path.join(
+        REPORT_FOLDER,
+        report_filename
+    )
+
+
+    # =================================================
+    # PDF STYLES
+    # =================================================
+
+    styles = getSampleStyleSheet()
+
+
+    title_style = styles["Title"]
+
+    title_style.alignment = TA_CENTER
+
+
+    heading_style = styles["Heading2"]
+
+    normal_style = styles["BodyText"]
+
+
+    # =================================================
+    # CREATE PDF
+    # =================================================
+
+    document = SimpleDocTemplate(
+
+        report_path,
+
+        pagesize=A4,
+
+        rightMargin=40,
+
+        leftMargin=40,
+
+        topMargin=40,
+
+        bottomMargin=40
+
+    )
+
+
+    elements = []
+
+
+    # =================================================
+    # TITLE
+    # =================================================
+
+    elements.append(
+
+        Paragraph(
+
+            "Academic Document Authenticity Validator",
+
+            title_style
+
         )
 
-        c = canvas.Canvas(
-            response,
-            pagesize=A4
+    )
+
+
+    elements.append(
+        Spacer(1, 10)
+    )
+
+
+    elements.append(
+
+        Paragraph(
+
+            "Document Verification Report",
+
+            heading_style
+
         )
 
-        width, height = A4
+    )
 
-        y = height - 30 * mm
 
-        # ----------------------------------------------------
-        # TITLE
-        # ----------------------------------------------------
+    elements.append(
+        Spacer(1, 20)
+    )
 
-        c.setFont(
-            "Helvetica-Bold",
-            18
+
+    # =================================================
+    # DOCUMENT INFORMATION
+    # =================================================
+
+    elements.append(
+
+        Paragraph(
+
+            "Document Information",
+
+            heading_style
+
         )
 
-        c.drawString(
-            20 * mm,
-            y,
-            "Academic Document Verification Report"
-        )
+    )
 
-        y -= 15 * mm
 
-        c.setFont(
-            "Helvetica",
-            11
-        )
+    elements.append(
+        Spacer(1, 8)
+    )
 
-        # ----------------------------------------------------
-        # DETAILS
-        # ----------------------------------------------------
 
-        report_data = [
+    document_data = [
 
-            ("Document", filename),
+        [
+            "Uploaded File",
+            filename
+        ],
 
-            ("Document Type", document_type),
+        [
+            "Document Type",
+            document_type
+        ],
 
-            ("Candidate Name", candidate_name),
+        [
+            "Candidate Name",
+            candidate_name
+        ],
 
-            ("Register Number", register_number),
+        [
+            "Register Number",
+            register_number
+        ],
 
-            ("Date of Birth", dob),
+        [
+            "Date of Birth",
+            dob
+        ],
 
-            ("Overall Score", f"{overall_score}%"),
-
-            ("Status", status),
-
-            ("OCR Verification", f"{verification_score}%"),
-
-            ("Visual Similarity", f"{similarity}%"),
-
-            ("ML Pattern Deviation", f"{ml_score}%"),
-
-            ("Image Quality", image_quality),
-
-            ("Reference", reference),
+        [
+            "Reference Document",
+            reference
         ]
 
-        for label, value in report_data:
+    ]
 
-            c.setFont(
-                "Helvetica-Bold",
-                10
+
+    document_table = Table(
+
+        document_data,
+
+        colWidths=[
+            160,
+            340
+        ]
+
+    )
+
+
+    document_table.setStyle(
+
+        TableStyle([
+
+            (
+                "BACKGROUND",
+                (0, 0),
+                (0, -1),
+                colors.lightgrey
+            ),
+
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.grey
+            ),
+
+            (
+                "FONTNAME",
+                (0, 0),
+                (0, -1),
+                "Helvetica-Bold"
+            ),
+
+            (
+                "PADDING",
+                (0, 0),
+                (-1, -1),
+                8
             )
 
-            c.drawString(
-                20 * mm,
-                y,
-                label + ":"
-            )
+        ])
 
-            c.setFont(
-                "Helvetica",
-                10
-            )
+    )
 
-            c.drawString(
-                65 * mm,
-                y,
-                str(value)
-            )
 
-            y -= 8 * mm
+    elements.append(
+        document_table
+    )
 
-            if y < 25 * mm:
 
-                c.showPage()
+    elements.append(
+        Spacer(1, 20)
+    )
 
-                y = height - 25 * mm
 
-                c.setFont(
-                    "Helvetica",
-                    10
-                )
+    # =================================================
+    # VERIFICATION SUMMARY
+    # =================================================
 
-        # ----------------------------------------------------
-        # DISCLAIMER
-        # ----------------------------------------------------
+    elements.append(
 
-        y -= 5 * mm
+        Paragraph(
 
-        c.setFont(
-            "Helvetica-Bold",
-            11
+            "Verification Summary",
+
+            heading_style
+
         )
 
-        c.drawString(
-            20 * mm,
-            y,
-            "Disclaimer"
-        )
+    )
 
-        y -= 8 * mm
 
-        c.setFont(
-            "Helvetica",
-            9
-        )
+    elements.append(
+        Spacer(1, 8)
+    )
 
-        disclaimer = (
-            "This report is an automated screening result. "
-            "It does not independently prove that a document "
-            "is genuine or fraudulent. Final verification "
-            "should be performed through the appropriate "
-            "educational institution or authorized system."
-        )
 
-        # Wrap text
-        words = disclaimer.split()
+    summary_data = [
 
-        line = ""
+        [
+            "Overall Score",
+            str(overall_score) + "%"
+        ],
 
-        for word in words:
+        [
+            "Final Status",
+            status
+        ],
 
-            test_line = line + " " + word
+        [
+            "OCR Verification",
+            str(verification_score) + "%"
+        ],
 
-            if len(test_line) > 90:
+        [
+            "Visual Similarity",
+            str(similarity) + "%"
+        ],
 
-                c.drawString(
-                    20 * mm,
-                    y,
-                    line.strip()
-                )
+        [
+            "ML Anomaly Score",
+            str(ml_score)
+        ],
 
-                y -= 5 * mm
+        [
+            "Image Quality",
+            image_quality
+        ]
 
-                line = word
+    ]
 
-            else:
 
-                line = test_line
+    summary_table = Table(
 
-        if line:
+        summary_data,
 
-            c.drawString(
-                20 * mm,
-                y,
-                line.strip()
+        colWidths=[
+            200,
+            300
+        ]
+
+    )
+
+
+    summary_table.setStyle(
+
+        TableStyle([
+
+            (
+                "BACKGROUND",
+                (0, 0),
+                (0, -1),
+                colors.lightgrey
+            ),
+
+            (
+                "GRID",
+                (0, 0),
+                (-1, -1),
+                0.5,
+                colors.grey
+            ),
+
+            (
+                "FONTNAME",
+                (0, 0),
+                (0, -1),
+                "Helvetica-Bold"
+            ),
+
+            (
+                "PADDING",
+                (0, 0),
+                (-1, -1),
+                8
             )
 
-        c.save()
+        ])
 
-        return response
-
-    except Exception as e:
-
-        return f"Could not generate report: {e}", 500
+    )
 
 
-# ============================================================
-# RUN APP
-# ============================================================
+    elements.append(
+        summary_table
+    )
+
+
+    elements.append(
+        Spacer(1, 25)
+    )
+
+
+    # =================================================
+    # INTERPRETATION
+    # =================================================
+
+    elements.append(
+
+        Paragraph(
+
+            "Analysis Interpretation",
+
+            heading_style
+
+        )
+
+    )
+
+
+    elements.append(
+        Spacer(1, 8)
+    )
+
+
+    if status == "LOW RISK":
+
+        interpretation = (
+
+            "The available verification signals "
+
+            "are generally consistent with the "
+
+            "reference evidence."
+
+        )
+
+
+    elif status == "NEEDS REVIEW":
+
+        interpretation = (
+
+            "The document contains verified "
+
+            "information, but some verification "
+
+            "signals differ from the available "
+
+            "reference evidence. Manual "
+
+            "verification is recommended."
+
+        )
+
+
+    else:
+
+        interpretation = (
+
+            "Several verification signals show "
+
+            "inconsistencies. Manual verification "
+
+            "using an authoritative institutional "
+
+            "record is recommended."
+
+        )
+
+
+    elements.append(
+
+        Paragraph(
+
+            interpretation,
+
+            normal_style
+
+        )
+
+    )
+
+
+    elements.append(
+        Spacer(1, 20)
+    )
+
+
+    # =================================================
+    # DISCLAIMER
+    # =================================================
+
+    elements.append(
+
+        Paragraph(
+
+            "Disclaimer",
+
+            heading_style
+
+        )
+
+    )
+
+
+    elements.append(
+        Spacer(1, 8)
+    )
+
+
+    disclaimer = (
+
+        "This report is generated by an "
+
+        "AI-assisted document analysis prototype. "
+
+        "The system uses OCR extraction, visual "
+
+        "comparison, academic consistency checks, "
+
+        "image quality analysis and anomaly detection. "
+
+        "The generated scores do not independently "
+
+        "prove that a document is genuine or fraudulent. "
+
+        "Final verification should be performed using "
+
+        "authoritative institutional records."
+
+    )
+
+
+    elements.append(
+
+        Paragraph(
+
+            disclaimer,
+
+            normal_style
+
+        )
+
+    )
+
+
+    # =================================================
+    # BUILD PDF
+    # =================================================
+
+    document.build(
+        elements
+    )
+
+
+    return send_file(
+
+        report_path,
+
+        as_attachment=True,
+
+        download_name=report_filename
+
+    )
+
+
+# =====================================================
+# RUN
+# =====================================================
 
 if __name__ == "__main__":
 
     app.run(
-        debug=True,
-        host="127.0.0.1",
-        port=5000
+        debug=True
     )

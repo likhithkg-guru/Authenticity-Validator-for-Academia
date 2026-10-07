@@ -2,7 +2,6 @@ import re
 
 
 def clean_text(text):
-    """Normalize OCR text for analysis."""
     if not text:
         return ""
 
@@ -13,7 +12,6 @@ def clean_text(text):
 
 
 def extract_numbers(text):
-    """Extract integer and decimal numbers from OCR text."""
     if not text:
         return []
 
@@ -21,12 +19,6 @@ def extract_numbers(text):
 
 
 def detect_academic_groups(text):
-    """
-    Detect major academic information groups.
-    Missing percentage is NOT treated as a failure because
-    many marksheets do not explicitly print percentage.
-    """
-
     text_lower = text.lower()
 
     groups = {
@@ -36,7 +28,6 @@ def detect_academic_groups(text):
         "result": False
     }
 
-    # Marks table
     marks_keywords = [
         "marks obtained",
         "max. marks",
@@ -55,7 +46,6 @@ def detect_academic_groups(text):
     if marks_hits >= 2:
         groups["marks_table"] = True
 
-    # Subjects
     subject_keywords = [
         "subject",
         "subjects",
@@ -79,7 +69,6 @@ def detect_academic_groups(text):
     if subject_hits >= 2:
         groups["subjects"] = True
 
-    # Institution
     institution_keywords = [
         "university",
         "board",
@@ -94,7 +83,6 @@ def detect_academic_groups(text):
     if any(keyword in text_lower for keyword in institution_keywords):
         groups["institution"] = True
 
-    # Result
     result_keywords = [
         "passed",
         "pass",
@@ -117,11 +105,6 @@ def detect_academic_groups(text):
 
 
 def detect_subject_marks(text):
-    """
-    Check whether subject-level marks appear to be present.
-    This is intentionally conservative because OCR can flatten tables.
-    """
-
     text_lower = text.lower()
 
     subject_keywords = [
@@ -150,11 +133,6 @@ def detect_subject_marks(text):
 
 
 def validate_marks(text):
-    """
-    Detect marks-table terminology and numeric values.
-    Does not assume OCR has preserved table columns correctly.
-    """
-
     text_lower = text.lower()
 
     table_keywords = [
@@ -185,19 +163,6 @@ def validate_marks(text):
 
 
 def validate_percentage(text):
-    """
-    Detect an explicitly printed percentage.
-
-    Percentage is optional because many academic marksheets
-    do not display it directly.
-    """
-
-    if not text:
-        return {
-            "status": "NOT_APPLICABLE",
-            "message": "No explicit percentage value detected."
-        }
-
     patterns = [
         r"\b\d{1,3}(?:\.\d+)?\s*%",
         r"percentage\s*[:\-]?\s*\d{1,3}(?:\.\d+)?",
@@ -220,14 +185,6 @@ def validate_percentage(text):
 
 
 def validate_dates(text):
-    """Detect common date formats."""
-
-    if not text:
-        return {
-            "status": "REVIEW",
-            "message": "No date information detected."
-        }
-
     patterns = [
         r"\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b",
         r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b"
@@ -251,29 +208,51 @@ def validate_dates(text):
 
 
 def validate_register_number(text):
-    """Detect register / identification number."""
+    """
+    Register number validation.
 
-    if not text:
-        return {
-            "status": "REVIEW",
-            "message": "No register number detected."
-        }
+    OCR sometimes inserts spaces around punctuation.
+    Karnataka SSLC OCR can also contain noisy text around
+    the register-number label, so the matching is tolerant.
+    """
 
     patterns = [
-        r"register\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9/-]{5,25})",
-        r"registration\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9/-]{5,25})",
-        r"roll\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9/-]{5,25})",
-        r"\bUSN\s*[:.\-]?\s*([A-Z0-9/-]{5,25})"
+        r"register\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9]{6,20})",
+        r"registration\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9]{6,20})",
+        r"roll\s*(?:no|number)\s*[:.\-]?\s*([A-Z0-9]{6,20})",
+        r"\bUSN\s*[:.\-]?\s*([A-Z0-9]{6,20})"
     ]
 
     for pattern in patterns:
-        match = re.search(pattern, text, re.IGNORECASE)
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
 
         if match:
+
             return {
                 "status": "PASS",
-                "message": "Register/identification number detected."
+                "message": "Register/identification number detected.",
+                "value": match.group(1)
             }
+
+    # Fallback specifically for Karnataka-style OCR
+    fallback = re.search(
+        r"Register\s*No\.?\s*[:\-]?\s*(\d{8,15})",
+        text,
+        re.IGNORECASE
+    )
+
+    if fallback:
+
+        return {
+            "status": "PASS",
+            "message": "Register/identification number detected.",
+            "value": fallback.group(1)
+        }
 
     return {
         "status": "REVIEW",
@@ -283,16 +262,16 @@ def validate_register_number(text):
 
 def check_numeric_consistency(text):
     """
-    Evaluate whether marks-related numeric information exists.
+    OCR often destroys table columns.
 
-    Important:
-    OCR frequently destroys table column structure.
-    Therefore we do NOT call missing totals a suspicious/fraud indicator.
+    Therefore this function checks whether marks information
+    exists but does NOT treat imperfect table extraction as fraud.
     """
 
     marks_result = validate_marks(text)
 
     if not marks_result["detected"]:
+
         return {
             "status": "REVIEW",
             "message": "Marks information could not be reliably extracted."
@@ -300,24 +279,26 @@ def check_numeric_consistency(text):
 
     text_lower = text.lower()
 
-    total_present = bool(
-        re.search(r"\btotal\b", text_lower)
-    )
+    if "total" in text_lower:
 
-    if total_present:
         return {
             "status": "REVIEW",
-            "message": "Marks and total fields were detected, but OCR table alignment should be reviewed."
+            "message": (
+                "Marks and total fields were detected, "
+                "but OCR table alignment should be reviewed."
+            )
         }
 
     return {
         "status": "REVIEW",
-        "message": "Marks were detected, but a clearly extractable total was not found."
+        "message": (
+            "Marks were detected, but a clearly extractable "
+            "total was not found."
+        )
     }
 
 
 def validate_required_information(text):
-    """Check whether major academic information groups are present."""
 
     groups = detect_academic_groups(text)
 
@@ -349,21 +330,11 @@ def validate_required_information(text):
 
 
 def analyze_academic_consistency(text):
-    """
-    Main academic consistency analysis.
-
-    The system distinguishes:
-    - genuine missing information
-    - optional fields
-    - OCR/table extraction limitations
-
-    It does not label a document fraudulent based only on
-    OCR uncertainty.
-    """
 
     text = clean_text(text)
 
     if not text:
+
         return {
             "status": "INCOMPLETE",
             "score": 0.0,
@@ -375,150 +346,209 @@ def analyze_academic_consistency(text):
                     "message": "No academic text could be extracted."
                 }
             ],
-            "explanation": "Academic consistency could not be evaluated because OCR returned no usable text."
+            "explanation": (
+                "Academic consistency could not be evaluated "
+                "because OCR returned no usable text."
+            )
         }
 
     required = validate_required_information(text)
+
     subject_result = detect_subject_marks(text)
+
     marks_result = validate_marks(text)
+
     percentage_result = validate_percentage(text)
+
     date_result = validate_dates(text)
+
     register_result = validate_register_number(text)
+
     numeric_result = check_numeric_consistency(text)
 
     indicators = []
 
-    # Required academic information
+    # -------------------------------------------------
+    # Required information
+    # -------------------------------------------------
+
     if required["detected_groups"] < required["total_groups"]:
+
         indicators.append({
             "check": "required_information",
             "status": "NEEDS REVIEW",
             "message": (
                 f"{required['detected_groups']}/"
-                f"{required['total_groups']} academic information groups detected."
+                f"{required['total_groups']} academic "
+                f"information groups detected."
             )
         })
 
-    # Subject marks
-    if subject_result["detected"]:
-        subject_message = (
-            f"{len(subject_result['subjects'])} subject-related field(s) detected."
-        )
-    else:
-        subject_message = "Subject-level information could not be reliably detected."
+    # -------------------------------------------------
+    # Subjects
+    # -------------------------------------------------
+
+    if not subject_result["detected"]:
 
         indicators.append({
             "check": "subjects",
             "status": "NEEDS REVIEW",
-            "message": subject_message
+            "message": (
+                "Subject-level information could not "
+                "be reliably detected."
+            )
         })
 
+    # -------------------------------------------------
     # Marks table
-    if marks_result["detected"]:
-        marks_message = (
-            "Marks-table terminology and numeric values detected."
-        )
-    else:
-        marks_message = (
-            "Marks-table information could not be reliably extracted."
-        )
+    # -------------------------------------------------
+
+    if not marks_result["detected"]:
 
         indicators.append({
             "check": "marks_table",
             "status": "NEEDS REVIEW",
-            "message": marks_message
+            "message": (
+                "Marks-table information could not "
+                "be reliably extracted."
+            )
         })
 
-    # Percentage
-    if percentage_result["status"] == "PASS":
-        percentage_message = percentage_result["message"]
+    # -------------------------------------------------
+    # IMPORTANT:
+    # Missing percentage is NOT suspicious
+    # -------------------------------------------------
 
-    else:
-        percentage_message = percentage_result["message"]
+    # Do NOT add percentage to indicators.
 
-        # IMPORTANT:
-        # Missing percentage is NOT suspicious.
-        # We deliberately do NOT append it to indicators.
-
+    # -------------------------------------------------
     # Date
+    # -------------------------------------------------
+
     if date_result["status"] != "PASS":
+
         indicators.append({
             "check": "date",
             "status": "NEEDS REVIEW",
             "message": date_result["message"]
         })
 
-    # Register
+    # -------------------------------------------------
+    # Register number
+    # -------------------------------------------------
+
     if register_result["status"] != "PASS":
+
         indicators.append({
             "check": "register_number",
             "status": "NEEDS REVIEW",
             "message": register_result["message"]
         })
 
+    # -------------------------------------------------
     # Numeric consistency
-    if numeric_result["status"] == "REVIEW":
-        indicators.append({
-            "check": "numeric_consistency",
-            "status": "NEEDS REVIEW",
-            "message": numeric_result["message"]
-        })
+    # -------------------------------------------------
 
-    # Calculate consistency score
+    # OCR table alignment is uncertain.
+    # This is a review note, NOT a fraud indicator.
+
+    numeric_review = numeric_result["status"] == "REVIEW"
+
+    # -------------------------------------------------
+    # SCORE
+    # -------------------------------------------------
+
+    # Start with the required academic information score.
+
     score = required["score"]
 
-    # Reward reliable subject and marks detection
+    # Subject information
     if subject_result["detected"]:
         score += 2.5
 
+    # Marks table
     if marks_result["detected"]:
+        score += 2.5
+
+    # Register number
+    if register_result["status"] == "PASS":
+        score += 2.5
+
+    # Date
+    if date_result["status"] == "PASS":
         score += 2.5
 
     score = min(score, 100.0)
 
-    # If major information is present, avoid over-penalizing OCR uncertainty.
-    if required["detected_groups"] >= 3 and subject_result["detected"] and marks_result["detected"]:
+    # -------------------------------------------------
+    # STATUS
+    # -------------------------------------------------
+
+    if (
+        required["detected_groups"] >= 3
+        and subject_result["detected"]
+        and marks_result["detected"]
+    ):
+
         status = "CONSISTENT"
 
     elif required["detected_groups"] >= 3:
+
         status = "NEEDS REVIEW"
 
     else:
+
         status = "INCOMPLETE"
 
-    # Human-readable explanation
+    # -------------------------------------------------
+    # EXPLANATION
+    # -------------------------------------------------
+
     if status == "CONSISTENT":
+
         explanation = (
-            "Required academic information, subject details and marks-table "
-            "information were detected consistently. Some table relationships "
-            "may still require manual review because OCR can alter table alignment."
+            "Required academic information, subject details "
+            "and marks-table information were detected consistently. "
+            "Some table relationships may still require manual review "
+            "because OCR can alter table alignment."
         )
 
     elif status == "NEEDS REVIEW":
+
         explanation = (
-            "Academic information was detected, but some fields or numeric/table "
-            "relationships require additional review. OCR table extraction can "
-            "affect automated consistency checks."
+            "Academic information was detected, but some fields "
+            "or numeric/table relationships require additional review. "
+            "OCR table extraction can affect automated consistency checks."
         )
 
     else:
+
         explanation = (
-            "Important academic information could not be reliably extracted. "
-            "Manual verification is recommended."
+            "Important academic information could not be reliably "
+            "extracted. Manual verification is recommended."
         )
 
     return {
         "status": status,
         "score": round(score, 1),
+
         "suspicious_count": len(indicators),
+
         "suspicious_indicators": indicators,
+
         "explanation": explanation,
 
         "required_information": required,
+
         "subjects": subject_result,
+
         "marks": marks_result,
+
         "percentage": percentage_result,
+
         "dates": date_result,
+
         "register_number": register_result,
+
         "numeric_consistency": numeric_result
     }

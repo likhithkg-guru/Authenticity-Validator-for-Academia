@@ -1,30 +1,1332 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <title>Upload Document</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Upload Document | AcademicAI</title>
+
+    <link rel="preconnect"
+          href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+          rel="stylesheet">
+
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+
+        body {
+
+            min-height: 100vh;
+
+            font-family: "Inter", sans-serif;
+
+            color: #f8fafc;
+
+            background:
+
+                radial-gradient(
+                    circle at 15% 15%,
+                    rgba(37, 99, 235, 0.20),
+                    transparent 32%
+                ),
+
+                radial-gradient(
+                    circle at 85% 80%,
+                    rgba(124, 58, 237, 0.18),
+                    transparent 32%
+                ),
+
+                #050816;
+
+            overflow-x: hidden;
+
+        }
+
+
+        /* BACKGROUND GRID */
+
+        .background-grid {
+
+            position: fixed;
+
+            inset: 0;
+
+            pointer-events: none;
+
+            background-image:
+
+                linear-gradient(
+                    rgba(255,255,255,0.025) 1px,
+                    transparent 1px
+                ),
+
+                linear-gradient(
+                    90deg,
+                    rgba(255,255,255,0.025) 1px,
+                    transparent 1px
+                );
+
+            background-size: 55px 55px;
+
+            mask-image:
+                linear-gradient(
+                    to bottom,
+                    black,
+                    transparent
+                );
+
+            z-index: -2;
+
+        }
+
+
+        /* GLOW */
+
+        .glow {
+
+            position: fixed;
+
+            width: 400px;
+
+            height: 400px;
+
+            border-radius: 50%;
+
+            filter: blur(120px);
+
+            opacity: 0.15;
+
+            pointer-events: none;
+
+            z-index: -1;
+
+        }
+
+
+        .glow.one {
+
+            background: #2563eb;
+
+            top: 100px;
+
+            left: -150px;
+
+        }
+
+
+        .glow.two {
+
+            background: #9333ea;
+
+            bottom: -100px;
+
+            right: -150px;
+
+        }
+
+
+        /* NAVBAR */
+
+        nav {
+
+            position: fixed;
+
+            top: 18px;
+
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            width: min(1150px, 92%);
+
+            padding: 14px 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            background:
+                rgba(15, 23, 42, 0.72);
+
+            backdrop-filter: blur(20px);
+
+            border:
+                1px solid
+                rgba(255,255,255,0.09);
+
+            border-radius: 18px;
+
+            z-index: 100;
+
+        }
+
+
+        .brand {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 11px;
+
+            font-size: 17px;
+
+            font-weight: 800;
+
+        }
+
+
+        .brand-icon {
+
+            width: 38px;
+
+            height: 38px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 11px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+
+            box-shadow:
+                0 0 25px
+                rgba(59,130,246,0.35);
+
+        }
+
+
+        .back-button {
+
+            text-decoration: none;
+
+            color: #cbd5e1;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+            padding: 10px 16px;
+
+            border-radius: 10px;
+
+            border:
+                1px solid
+                rgba(255,255,255,0.1);
+
+            background:
+                rgba(255,255,255,0.03);
+
+            transition: 0.3s;
+
+        }
+
+
+        .back-button:hover {
+
+            color: white;
+
+            background:
+                rgba(255,255,255,0.08);
+
+            transform:
+                translateY(-2px);
+
+        }
+
+
+        /* MAIN */
+
+        .page {
+
+            min-height: 100vh;
+
+            padding:
+                150px 20px 80px;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+        }
+
+
+        .container {
+
+            width: min(950px, 100%);
+
+            text-align: center;
+
+        }
+
+
+        /* STATUS */
+
+        .status-pill {
+
+            display: inline-flex;
+
+            align-items: center;
+
+            gap: 9px;
+
+            padding: 8px 14px;
+
+            border-radius: 999px;
+
+            background:
+                rgba(34,197,94,0.08);
+
+            border:
+                1px solid
+                rgba(34,197,94,0.2);
+
+            color: #86efac;
+
+            font-size: 10px;
+
+            font-weight: 800;
+
+            letter-spacing: 1px;
+
+            margin-bottom: 22px;
+
+        }
+
+
+        .status-dot {
+
+            width: 7px;
+
+            height: 7px;
+
+            border-radius: 50%;
+
+            background: #22c55e;
+
+            box-shadow:
+                0 0 12px #22c55e;
+
+            animation:
+                pulse 1.7s infinite;
+
+        }
+
+
+        @keyframes pulse {
+
+            0%,100% {
+
+                opacity: 1;
+
+                transform: scale(1);
+
+            }
+
+            50% {
+
+                opacity: 0.5;
+
+                transform: scale(0.75);
+
+            }
+
+        }
+
+
+        /* TITLE */
+
+        h1 {
+
+            font-size:
+                clamp(40px, 6vw, 70px);
+
+            line-height: 1;
+
+            letter-spacing: -3px;
+
+            font-weight: 900;
+
+        }
+
+
+        .gradient-text {
+
+            background:
+
+                linear-gradient(
+                    100deg,
+                    #60a5fa,
+                    #818cf8,
+                    #c084fc
+                );
+
+            -webkit-background-clip: text;
+
+            background-clip: text;
+
+            color: transparent;
+
+        }
+
+
+        .subtitle {
+
+            max-width: 650px;
+
+            margin:
+                22px auto 40px;
+
+            color: #94a3b8;
+
+            font-size: 14px;
+
+            line-height: 1.8;
+
+        }
+
+
+        /* UPLOAD CARD */
+
+        .upload-card {
+
+            position: relative;
+
+            max-width: 700px;
+
+            margin: auto;
+
+            padding: 45px;
+
+            border-radius: 28px;
+
+            background:
+
+                linear-gradient(
+                    145deg,
+                    rgba(30,41,59,0.88),
+                    rgba(15,23,42,0.72)
+                );
+
+            border:
+                1px solid
+                rgba(255,255,255,0.10);
+
+            box-shadow:
+
+                0 30px 100px
+                rgba(0,0,0,0.40),
+
+                0 0 80px
+                rgba(59,130,246,0.10);
+
+            overflow: hidden;
+
+        }
+
+
+        .upload-card::before {
+
+            content: "";
+
+            position: absolute;
+
+            top: 0;
+
+            left: 15%;
+
+            width: 70%;
+
+            height: 1px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    #60a5fa,
+                    #a78bfa,
+                    transparent
+                );
+
+            box-shadow:
+                0 0 20px
+                rgba(96,165,250,0.8);
+
+        }
+
+
+        /* UPLOAD AREA */
+
+        .drop-zone {
+
+            position: relative;
+
+            border:
+                1.5px dashed
+                rgba(96,165,250,0.30);
+
+            border-radius: 22px;
+
+            padding: 55px 25px;
+
+            background:
+                rgba(59,130,246,0.035);
+
+            transition:
+                0.35s;
+
+            cursor: pointer;
+
+        }
+
+
+        .drop-zone:hover {
+
+            border-color:
+                rgba(96,165,250,0.75);
+
+            background:
+                rgba(59,130,246,0.07);
+
+            transform:
+                translateY(-3px);
+
+            box-shadow:
+                0 15px 50px
+                rgba(37,99,235,0.12);
+
+        }
+
+
+        .upload-icon {
+
+            width: 80px;
+
+            height: 80px;
+
+            margin:
+                0 auto 22px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 22px;
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    rgba(37,99,235,0.15),
+                    rgba(124,58,237,0.15)
+                );
+
+            border:
+                1px solid
+                rgba(96,165,250,0.20);
+
+            font-size: 35px;
+
+            box-shadow:
+                0 0 40px
+                rgba(59,130,246,0.12);
+
+            animation:
+                floatIcon 3s ease-in-out infinite;
+
+        }
+
+
+        @keyframes floatIcon {
+
+            0%,100% {
+
+                transform:
+                    translateY(0);
+
+            }
+
+            50% {
+
+                transform:
+                    translateY(-7px);
+
+            }
+
+        }
+
+
+        .drop-zone h2 {
+
+            font-size: 21px;
+
+            margin-bottom: 9px;
+
+        }
+
+
+        .drop-zone p {
+
+            color: #64748b;
+
+            font-size: 12px;
+
+            line-height: 1.7;
+
+        }
+
+
+        .browse-text {
+
+            color: #60a5fa;
+
+            font-weight: 800;
+
+        }
+
+
+        /* FILE INPUT */
+
+        #document {
+
+            display: none;
+
+        }
+
+
+        .file-name {
+
+            margin-top: 18px;
+
+            padding: 12px 16px;
+
+            display: none;
+
+            border-radius: 10px;
+
+            background:
+                rgba(34,197,94,0.07);
+
+            border:
+                1px solid
+                rgba(34,197,94,0.15);
+
+            color: #86efac;
+
+            font-size: 12px;
+
+            font-weight: 700;
+
+        }
+
+
+        /* BUTTON */
+
+        .verify-button {
+
+            width: 100%;
+
+            margin-top: 22px;
+
+            padding: 17px;
+
+            border: none;
+
+            border-radius: 13px;
+
+            color: white;
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    #2563eb,
+                    #7c3aed
+                );
+
+            font-family:
+                "Inter",
+                sans-serif;
+
+            font-size: 13px;
+
+            font-weight: 900;
+
+            letter-spacing: 0.3px;
+
+            cursor: pointer;
+
+            box-shadow:
+
+                0 15px 45px
+                rgba(37,99,235,0.25);
+
+            transition: 0.3s;
+
+        }
+
+
+        .verify-button:hover {
+
+            transform:
+                translateY(-3px);
+
+            box-shadow:
+
+                0 20px 55px
+                rgba(124,58,237,0.35);
+
+        }
+
+
+        .verify-button:active {
+
+            transform:
+                translateY(0);
+
+        }
+
+
+        /* INFO */
+
+        .security-info {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 12px;
+
+            margin-top: 18px;
+
+        }
+
+
+        .info-card {
+
+            padding: 16px;
+
+            border-radius: 14px;
+
+            background:
+                rgba(255,255,255,0.025);
+
+            border:
+                1px solid
+                rgba(255,255,255,0.06);
+
+        }
+
+
+        .info-icon {
+
+            font-size: 18px;
+
+            margin-bottom: 7px;
+
+        }
+
+
+        .info-title {
+
+            font-size: 10px;
+
+            font-weight: 800;
+
+            color: #cbd5e1;
+
+        }
+
+
+        .info-text {
+
+            font-size: 9px;
+
+            color: #64748b;
+
+            margin-top: 4px;
+
+        }
+
+
+        /* PROCESS */
+
+        .process {
+
+            margin-top: 45px;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            gap: 12px;
+
+            flex-wrap: wrap;
+
+        }
+
+
+        .process-item {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            color: #64748b;
+
+            font-size: 10px;
+
+            font-weight: 700;
+
+        }
+
+
+        .process-number {
+
+            width: 27px;
+
+            height: 27px;
+
+            display: grid;
+
+            place-items: center;
+
+            border-radius: 50%;
+
+            background:
+                rgba(59,130,246,0.10);
+
+            border:
+                1px solid
+                rgba(96,165,250,0.15);
+
+            color: #60a5fa;
+
+            font-size: 9px;
+
+            font-weight: 900;
+
+        }
+
+
+        .arrow {
+
+            color: #334155;
+
+            font-size: 16px;
+
+        }
+
+
+        /* FOOTER */
+
+        footer {
+
+            margin-top: 55px;
+
+            color: #475569;
+
+            font-size: 10px;
+
+        }
+
+
+        /* MOBILE */
+
+        @media (max-width: 650px) {
+
+            nav {
+
+                width: 94%;
+
+            }
+
+
+            .page {
+
+                padding:
+                    130px 15px 50px;
+
+            }
+
+
+            .upload-card {
+
+                padding: 22px;
+
+            }
+
+
+            .drop-zone {
+
+                padding:
+                    40px 18px;
+
+            }
+
+
+            .security-info {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            h1 {
+
+                letter-spacing:
+                    -2px;
+
+            }
+
+        }
+
+    </style>
+
 </head>
+
 
 <body>
 
-    <h1>Upload Academic Document</h1>
 
-    <form action="/analyze" method="POST" enctype="multipart/form-data">
+<div class="background-grid"></div>
 
-        <input
-            type="file"
-            name="document"
-            accept=".jpg,.jpeg,.png,.pdf"
-            required
-        >
+<div class="glow one"></div>
 
-        <br><br>
+<div class="glow two"></div>
 
-        <button type="submit">
-            Analyze Document
-        </button>
 
-    </form>
+<!-- NAVBAR -->
+
+<nav>
+
+    <div class="brand">
+
+        <div class="brand-icon">
+            🛡️
+        </div>
+
+        AcademicAI
+
+    </div>
+
+
+    <a href="/"
+       class="back-button">
+
+        ← Back to Home
+
+    </a>
+
+</nav>
+
+
+
+<!-- MAIN -->
+
+<main class="page">
+
+
+    <div class="container">
+
+
+        <!-- STATUS -->
+
+        <div class="status-pill">
+
+            <span class="status-dot"></span>
+
+            VERIFICATION ENGINE READY
+
+        </div>
+
+
+
+        <!-- TITLE -->
+
+        <h1>
+
+            Upload your
+
+            <span class="gradient-text">
+                document.
+            </span>
+
+        </h1>
+
+
+        <p class="subtitle">
+
+            Upload an academic document and let AcademicAI
+            analyze its information, visual structure,
+            academic consistency and machine-learning patterns.
+
+        </p>
+
+
+
+        <!-- UPLOAD CARD -->
+
+        <div class="upload-card">
+
+
+            <form action="/analyze"
+                  method="POST"
+                  enctype="multipart/form-data">
+
+
+                <label for="document"
+                       class="drop-zone">
+
+
+                    <div class="upload-icon">
+
+                        📄
+
+                    </div>
+
+
+                    <h2>
+
+                        Drop your document here
+
+                    </h2>
+
+
+                    <p>
+
+                        or
+
+                        <span class="browse-text">
+                            browse files
+                        </span>
+
+                        from your computer
+
+                    </p>
+
+
+                    <p style="margin-top:10px;">
+
+                        Supported formats:
+                        PDF, PNG, JPG, JPEG
+
+                    </p>
+
+
+                </label>
+
+
+                <input
+                    type="file"
+                    id="document"
+                    name="document"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    required
+                >
+
+
+                <div id="fileName"
+                     class="file-name">
+
+                    ✓ File selected
+
+                </div>
+
+
+                <button
+                    type="submit"
+                    class="verify-button">
+
+                    🚀 ANALYZE & VERIFY DOCUMENT
+
+                </button>
+
+
+            </form>
+
+
+            <!-- SECURITY INFO -->
+
+            <div class="security-info">
+
+
+                <div class="info-card">
+
+                    <div class="info-icon">
+                        🔎
+                    </div>
+
+                    <div class="info-title">
+
+                        OCR ANALYSIS
+
+                    </div>
+
+                    <div class="info-text">
+
+                        Extract academic information
+
+                    </div>
+
+                </div>
+
+
+                <div class="info-card">
+
+                    <div class="info-icon">
+                        🧠
+                    </div>
+
+                    <div class="info-title">
+
+                        ML DETECTION
+
+                    </div>
+
+                    <div class="info-text">
+
+                        Detect unusual patterns
+
+                    </div>
+
+                </div>
+
+
+                <div class="info-card">
+
+                    <div class="info-icon">
+                        📊
+                    </div>
+
+                    <div class="info-title">
+
+                        RISK ANALYSIS
+
+                    </div>
+
+                    <div class="info-text">
+
+                        Generate verification score
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+
+        </div>
+
+
+
+        <!-- PROCESS -->
+
+        <div class="process">
+
+
+            <div class="process-item">
+
+                <div class="process-number">
+                    01
+                </div>
+
+                Upload
+
+            </div>
+
+
+            <div class="arrow">
+                →
+            </div>
+
+
+            <div class="process-item">
+
+                <div class="process-number">
+                    02
+                </div>
+
+                Analyze
+
+            </div>
+
+
+            <div class="arrow">
+                →
+            </div>
+
+
+            <div class="process-item">
+
+                <div class="process-number">
+                    03
+                </div>
+
+                Verify
+
+            </div>
+
+
+            <div class="arrow">
+                →
+            </div>
+
+
+            <div class="process-item">
+
+                <div class="process-number">
+                    04
+                </div>
+
+                Report
+
+            </div>
+
+
+        </div>
+
+
+
+        <footer>
+
+            🛡️ AcademicAI · AI-Assisted Academic
+            Document Verification
+
+        </footer>
+
+
+    </div>
+
+</main>
+
+
+
+<script>
+
+    const fileInput =
+        document.getElementById("document");
+
+    const fileName =
+        document.getElementById("fileName");
+
+
+    fileInput.addEventListener(
+        "change",
+        function () {
+
+            if (this.files.length > 0) {
+
+                fileName.style.display =
+                    "block";
+
+                fileName.textContent =
+                    "✓ " +
+                    this.files[0].name;
+
+            }
+
+        }
+    );
+
+
+    const dropZone =
+        document.querySelector(".drop-zone");
+
+
+    dropZone.addEventListener(
+        "dragover",
+        function (event) {
+
+            event.preventDefault();
+
+            this.style.borderColor =
+                "rgba(96,165,250,0.9)";
+
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "dragleave",
+        function () {
+
+            this.style.borderColor =
+                "rgba(96,165,250,0.30)";
+
+        }
+    );
+
+
+    dropZone.addEventListener(
+        "drop",
+        function (event) {
+
+            event.preventDefault();
+
+            const files =
+                event.dataTransfer.files;
+
+            if (files.length > 0) {
+
+                fileInput.files =
+                    files;
+
+                fileName.style.display =
+                    "block";
+
+                fileName.textContent =
+                    "✓ " +
+                    files[0].name;
+
+            }
+
+            this.style.borderColor =
+                "rgba(96,165,250,0.30)";
+
+        }
+    );
+
+</script>
+
 
 </body>
+
 </html>
