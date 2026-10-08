@@ -119,7 +119,9 @@ init_database()
 @app.route("/")
 def home():
 
-    return render_template("index.html")
+    return render_template(
+        "index.html"
+    )
 
 
 # =====================================================
@@ -129,7 +131,9 @@ def home():
 @app.route("/upload")
 def upload():
 
-    return render_template("upload.html")
+    return render_template(
+        "upload.html"
+    )
 
 
 # =====================================================
@@ -211,9 +215,13 @@ def normalize_verification_result(result):
             score = 0.0
 
         return {
+
             "details": details,
+
             "checks": checks,
+
             "score": score,
+
             "status": result.get(
                 "status",
                 result.get(
@@ -221,18 +229,22 @@ def normalize_verification_result(result):
                     "UNKNOWN"
                 )
             ),
+
             "suspicious_count": result.get(
                 "suspicious_count",
                 0
             ),
+
             "suspicious_indicators": result.get(
                 "suspicious_indicators",
                 []
             ),
+
             "explanation": result.get(
                 "explanation",
                 ""
             )
+
         }
 
 
@@ -278,21 +290,29 @@ def normalize_verification_result(result):
             score = 0.0
 
         return {
+
             "details": (
                 details
                 if isinstance(details, dict)
                 else {}
             ),
+
             "checks": (
                 checks
                 if isinstance(checks, dict)
                 else {}
             ),
+
             "score": score,
+
             "status": status,
+
             "suspicious_count": 0,
+
             "suspicious_indicators": [],
+
             "explanation": ""
+
         }
 
 
@@ -301,13 +321,21 @@ def normalize_verification_result(result):
     # -------------------------------------------------
 
     return {
+
         "details": {},
+
         "checks": {},
+
         "score": 0.0,
+
         "status": "UNKNOWN",
+
         "suspicious_count": 0,
+
         "suspicious_indicators": [],
+
         "explanation": ""
+
     }
 
 
@@ -354,9 +382,20 @@ def analyze():
     # OCR
     # =================================================
 
-    ocr_text = extract_text_from_pdf(
-        filepath
-    )
+    try:
+
+        ocr_text = extract_text_from_pdf(
+            filepath
+        )
+
+    except Exception as e:
+
+        print(
+            "OCR error:",
+            e
+        )
+
+        ocr_text = ""
 
 
     # =================================================
@@ -377,9 +416,13 @@ def analyze():
         )
 
         classification = {
+
             "document_type": "UNKNOWN",
+
             "confidence": 0,
+
             "evidence": []
+
         }
 
 
@@ -416,6 +459,17 @@ def analyze():
             []
         )
     )
+
+
+    try:
+
+        document_confidence = float(
+            document_confidence
+        )
+
+    except:
+
+        document_confidence = 0.0
 
 
     # =================================================
@@ -478,6 +532,7 @@ def analyze():
                     "dob"
                 )
             )
+
         }
 
 
@@ -509,6 +564,7 @@ def analyze():
             "height": 0,
 
             "error": str(e)
+
         }
 
 
@@ -566,6 +622,15 @@ def analyze():
         similarity_score = 0.0
 
 
+    similarity_score = max(
+        0.0,
+        min(
+            100.0,
+            similarity_score
+        )
+    )
+
+
     reference_filename = authenticity_info.get(
         "filename"
     )
@@ -600,6 +665,7 @@ def analyze():
             "reference_count": 0,
 
             "explanation": str(e)
+
         }
 
 
@@ -667,6 +733,7 @@ def analyze():
             "explanation": str(e),
 
             "indicators": []
+
         }
 
 
@@ -711,6 +778,7 @@ def analyze():
             ),
 
             "error": str(e)
+
         }
 
 
@@ -798,6 +866,7 @@ def analyze():
         ) == "Low"
 
         else 0
+
     )
 
 
@@ -846,6 +915,7 @@ def analyze():
                 "score",
                 0
             )
+
         )
 
 
@@ -854,6 +924,7 @@ def analyze():
             "status",
 
             "NEEDS REVIEW"
+
         )
 
 
@@ -1044,6 +1115,89 @@ def analyze():
 
 
     # =================================================
+    # PREPARE TEMPLATE VARIABLES
+    # =================================================
+
+    candidate_name = details.get(
+        "candidate_name",
+        ""
+    )
+
+    register_number = details.get(
+        "register_number",
+        ""
+    )
+
+    dob = details.get(
+        "date_of_birth",
+        details.get(
+            "dob",
+            ""
+        )
+    )
+
+
+    image_quality = image_info.get(
+        "image_quality",
+        "Unknown"
+    )
+
+    blur_score = image_info.get(
+        "blur_score",
+        0
+    )
+
+    image_width = image_info.get(
+        "width",
+        0
+    )
+
+    image_height = image_info.get(
+        "height",
+        0
+    )
+
+
+    # -------------------------------------------------
+    # ML TEMPLATE VARIABLES
+    # -------------------------------------------------
+
+    ml_prediction = ml_result.get(
+        "prediction",
+        ml_result.get(
+            "status",
+            "NOT AVAILABLE"
+        )
+    )
+
+
+    ml_reference_count = ml_result.get(
+        "reference_count",
+        ml_result.get(
+            "references",
+            0
+        )
+    )
+
+
+    # -------------------------------------------------
+    # TAMPERING TEMPLATE VARIABLE
+    # -------------------------------------------------
+
+    tampering_status = tampering_result.get(
+        "status",
+        "NOT AVAILABLE"
+    )
+
+
+    # -------------------------------------------------
+    # CLASSIFICATION TEMPLATE VARIABLE
+    # -------------------------------------------------
+
+    classification_confidence = document_confidence
+
+
+    # =================================================
     # URLS
     # =================================================
 
@@ -1078,6 +1232,8 @@ def analyze():
 
         details=details,
 
+        checks=verification_checks,
+
         verification_checks=verification_checks,
 
         verification_score=verification_score,
@@ -1095,6 +1251,8 @@ def analyze():
 
         document_confidence=document_confidence,
 
+        classification_confidence=classification_confidence,
+
         classification_evidence=classification_evidence,
 
         similarity_score=similarity_score,
@@ -1103,9 +1261,25 @@ def analyze():
 
         ml_result=ml_result,
 
+        ml_anomaly_score=ml_anomaly_score,
+
+        ml_prediction=ml_prediction,
+
+        ml_reference_count=ml_reference_count,
+
         tampering_result=tampering_result,
 
+        tampering_status=tampering_status,
+
         image_info=image_info,
+
+        image_quality=image_quality,
+
+        blur_score=blur_score,
+
+        image_width=image_width,
+
+        image_height=image_height,
 
         academic_result=academic_result,
 
@@ -1118,6 +1292,12 @@ def analyze():
         academic_explanation=academic_explanation,
 
         risk_explanation=risk_explanation,
+
+        candidate_name=candidate_name,
+
+        register_number=register_number,
+
+        dob=dob,
 
         reference_filename=reference_filename,
 
