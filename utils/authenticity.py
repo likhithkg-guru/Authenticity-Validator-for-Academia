@@ -1,225 +1,612 @@
+
+import os
+import re
+
 import cv2
 import fitz
 import numpy as np
-import os
 
 
-# --------------------------------------------------
-# Convert first PDF page to image
-# --------------------------------------------------
+# =========================================================
+# DOCUMENT TYPE DETECTION
+# =========================================================
 
-def pdf_to_image(pdf_path):
+DOCUMENT_KEYWORDS = {
+    "MARKSHEET": [
+        "marksheet",
+        "mark sheet",
+        "marks card",
+        "marks obtained",
+        "maximum marks",
+        "scholastic subjects",
+        "sslc",
+        "school examination",
+        "grade",
+        "total marks",
+    ],
+    "DEGREE_CERTIFICATE": [
+        "degree certificate",
+        "degree awarded",
+        "bachelor of",
+        "master of",
+        "degree conferred",
+    ],
+    "TRANSCRIPT": [
+        "transcript",
+        "semester grade",
+        "grade point",
+        "credit hours",
+    ],
+    "PROVISIONAL_CERTIFICATE": [
+        "provisional certificate",
+        "provisional degree",
+    ],
+    "DIPLOMA_CERTIFICATE": [
+        "diploma certificate",
+        "diploma awarded",
+    ],
+    "BONAFIDE_CERTIFICATE": [
+        "bonafide certificate",
+        "bonafide",
+        "bonafide student",
+    ],
+    "TRANSFER_CERTIFICATE": [
+        "transfer certificate",
+        "tc number",
+    ],
+    "MIGRATION_CERTIFICATE": [
+        "migration certificate",
+        "migration certificate no",
+    ],
+}
 
-    try:
-        document = fitz.open(pdf_path)
 
-        if len(document) == 0:
-            document.close()
-            return None
+def detect_document_type(text, filename=""):
+    """
+    Estimate document type from extracted PDF text and filename.
+    Returns UNKNOWN if there is not enough evidence.
+    """
 
-        page = document[0]
+    combined_text = (
+        str(text or "") + " " + str(filename or "")
+    ).lower()
 
-        pix = page.get_pixmap(
-            matrix=fitz.Matrix(2, 2)
+    combined_text = re.sub(
+        r"\s+",
+        " ",
+        combined_text
+    )
+
+    scores = {}
+
+    for document_type, keywords in DOCUMENT_KEYWORDS.items():
+        score = sum(
+            1
+            for keyword in keywords
+            if keyword in combined_text
         )
 
-        image = np.frombuffer(
-            pix.samples,
-            dtype=np.uint8
-        )
+        if score:
+            scores[document_type] = score
 
-        channels = pix.n
+    if not scores:
+        return "UNKNOWN"
 
-        image = image.reshape(
-            pix.height,
-            pix.width,
-            channels
-        )
+    return max(
+        scores,
+        key=scores.get
+    )
 
-        if channels == 4:
 
-            image = cv2.cvtColor(
-                image,
-                cv2.COLOR_RGBA2BGR
+# =========================================================
+# LOAD A DOCUMENT PAGE
+# =========================================================
+
+def load_document_page(filepath):
+    """
+    Loads the first page of a PDF or an image.
+
+    Returns:
+        image: OpenCV BGR image, or None
+        text: Extracted text where available
+    """
+
+    if not filepath or not os.path.isfile(filepath):
+        return None, ""
+
+    extension = os.path.splitext(filepath)[1].lower()
+
+    # -----------------------------------------------------
+    # PDF
+    # -----------------------------------------------------
+
+    if extension == ".pdf":
+        try:
+            with fitz.open(filepath) as pdf:
+                if len(pdf) == 0:
+                    return None, ""
+
+                page = pdf[0]
+
+                # Read text from the first page.
+                text = page.get_text("text") or ""
+
+                # Render the page at a useful resolution.
+                pix = page.get_pixmap(
+                    matrix=fitz.Matrix(1.5, 1.5),
+                    colorspace=fitz.csRGB,
+                    alpha=False
+                )
+
+                image = np.frombuffer(
+                    pix.samples,
+                    dtype=np.uint8
+                ).reshape(
+                    pix.height,
+                    pix.width,
+                    3
+                )
+
+                # PyMuPDF produces RGB; OpenCV uses BGR.
+                image = cv2.cvtColor(
+                    image,
+                    cv2.COLOR_RGB2BGR
+                )
+
+                return image, text
+
+        except Exception as error:
+            print(
+                f"Could not read PDF {filepath}: {error}"
             )
+            return None, ""
 
-        else:
+    # -----------------------------------------------------
+    # IMAGE
+    # -----------------------------------------------------
 
-            image = cv2.cvtColor(
-                image,
-                cv2.COLOR_RGB2BGR
+    image_extensions = {
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".bmp",
+        ".tif",
+        ".tiff",
+        ".webp",
+    }
+
+    if extension in image_extensions:
+        try:
+            image = cv2.imread(filepath)
+
+            if image is None:
+                return None, ""
+
+            return image, ""
+
+        except Exception as error:
+            print(
+                f"Could not read image {filepath}: {error}"
             )
+            return None, ""
 
-        document.close()
-
-        return image
-
-    except Exception:
-
-        return None
+    return None, ""
 
 
-# --------------------------------------------------
-# Prepare image
-# --------------------------------------------------
+# =========================================================
+# NORMALIZE IMAGE FOR COMPARISON
+# =========================================================
 
 def prepare_image(image):
+    """
+    Normalizes page dimensions and creates grayscale and edge images.
+    """
 
-    return cv2.resize(
-        image,
-        (800, 1100)
-    )
+    if image is None or image.size == 0:
+        return None
 
-
-# --------------------------------------------------
-# Compare two documents
-# --------------------------------------------------
-
-def compare_documents(
-    uploaded_path,
-    reference_path
-):
-
-    uploaded_image = pdf_to_image(
-        uploaded_path
-    )
-
-    reference_image = pdf_to_image(
-        reference_path
-    )
-
-    if uploaded_image is None:
-
-        return {
-            "similarity": 0,
-            "status": "Unable to analyze uploaded document"
-        }
-
-    if reference_image is None:
-
-        return {
-            "similarity": 0,
-            "status": "Unable to read reference document"
-        }
-
-    uploaded_image = prepare_image(
-        uploaded_image
-    )
-
-    reference_image = prepare_image(
-        reference_image
-    )
-
-    uploaded_gray = cv2.cvtColor(
-        uploaded_image,
-        cv2.COLOR_BGR2GRAY
-    )
-
-    reference_gray = cv2.cvtColor(
-        reference_image,
-        cv2.COLOR_BGR2GRAY
-    )
-
-    difference = cv2.absdiff(
-        uploaded_gray,
-        reference_gray
-    )
-
-    mean_difference = np.mean(
-        difference
-    )
-
-    similarity = max(
-        0,
-        100 - (
-            mean_difference / 255 * 100
+    if len(image.shape) == 3:
+        gray = cv2.cvtColor(
+            image,
+            cv2.COLOR_BGR2GRAY
         )
-    )
-
-    similarity = round(
-        similarity,
-        2
-    )
-
-    if similarity >= 90:
-
-        status = "HIGH SIMILARITY"
-
-    elif similarity >= 70:
-
-        status = "MODERATE SIMILARITY"
-
     else:
+        gray = image.copy()
 
-        status = "LOW SIMILARITY"
+    original_height, original_width = gray.shape
+
+    if original_width == 0 or original_height == 0:
+        return None
+
+    # Resize to a consistent comparison canvas.
+    gray = cv2.resize(
+        gray,
+        (500, 700),
+        interpolation=cv2.INTER_AREA
+    )
+
+    # Reduce minor scan noise.
+    gray = cv2.GaussianBlur(
+        gray,
+        (3, 3),
+        0
+    )
+
+    edges = cv2.Canny(
+        gray,
+        50,
+        150
+    )
+
+    # Histogram helps compare overall visual distribution.
+    histogram = cv2.calcHist(
+        [gray],
+        [0],
+        None,
+        [64],
+        [0, 256]
+    )
+
+    cv2.normalize(
+        histogram,
+        histogram,
+        alpha=1,
+        norm_type=cv2.NORM_L1
+    )
+
+    aspect_ratio = original_width / original_height
 
     return {
-        "similarity": similarity,
-        "status": status
+        "gray": gray,
+        "edges": edges,
+        "histogram": histogram,
+        "aspect_ratio": aspect_ratio,
     }
 
 
-# ==================================================
-# MULTIPLE REFERENCE DOCUMENTS
-# ==================================================
+# =========================================================
+# VISUAL SIMILARITY
+# =========================================================
 
-def find_best_reference(
-    uploaded_path,
-    reference_folder
-):
+def compare_documents(uploaded_image, reference_image):
+    """
+    Produces a visual similarity estimate from 0 to 100.
 
-    best_match = None
-    best_similarity = -1
+    The score combines:
+        - grayscale appearance
+        - edge/layout similarity
+        - histogram similarity
+        - original page aspect ratio
 
-    if not os.path.exists(reference_folder):
+    This is a visual comparison score, not a fraud probability.
+    """
 
-        return None
+    first = prepare_image(uploaded_image)
+    second = prepare_image(reference_image)
+
+    if first is None or second is None:
+        return 0.0
+
+    # -----------------------------------------------------
+    # 1. Grayscale appearance
+    # -----------------------------------------------------
+
+    gray_difference = cv2.absdiff(
+        first["gray"],
+        second["gray"]
+    )
+
+    mean_difference = float(
+        np.mean(gray_difference)
+    )
+
+    pixel_similarity = max(
+        0.0,
+        100.0 - (mean_difference / 255.0 * 100.0)
+    )
+
+    # -----------------------------------------------------
+    # 2. Edge/layout similarity
+    # -----------------------------------------------------
+
+    edge_difference = cv2.absdiff(
+        first["edges"],
+        second["edges"]
+    )
+
+    mean_edge_difference = float(
+        np.mean(edge_difference)
+    )
+
+    edge_similarity = max(
+        0.0,
+        100.0 - (
+            mean_edge_difference / 255.0 * 100.0
+        )
+    )
+
+    # -----------------------------------------------------
+    # 3. Histogram similarity
+    # -----------------------------------------------------
+
+    correlation = cv2.compareHist(
+        first["histogram"],
+        second["histogram"],
+        cv2.HISTCMP_CORREL
+    )
+
+    # Correlation can range from -1 to 1.
+    histogram_similarity = (
+        (float(correlation) + 1.0) / 2.0
+    ) * 100.0
+
+    histogram_similarity = max(
+        0.0,
+        min(100.0, histogram_similarity)
+    )
+
+    # -----------------------------------------------------
+    # 4. Page aspect ratio
+    # -----------------------------------------------------
+
+    ratio_a = first["aspect_ratio"]
+    ratio_b = second["aspect_ratio"]
+
+    ratio_difference = abs(
+        ratio_a - ratio_b
+    ) / max(ratio_a, ratio_b, 0.001)
+
+    aspect_similarity = max(
+        0.0,
+        100.0 * (1.0 - ratio_difference)
+    )
+
+    # -----------------------------------------------------
+    # Combined score
+    # -----------------------------------------------------
+
+    score = (
+        pixel_similarity * 0.25
+        + edge_similarity * 0.35
+        + histogram_similarity * 0.20
+        + aspect_similarity * 0.20
+    )
+
+    return round(
+        max(0.0, min(100.0, score)),
+        2
+    )
 
 
-    reference_files = [
+# =========================================================
+# FIND REFERENCE PDFs
+# =========================================================
 
-        file
+def get_reference_files(reference_folder):
+    """
+    Finds PDF reference documents recursively, including PDFs
+    stored in category subfolders.
+    """
 
-        for file in os.listdir(reference_folder)
+    reference_files = []
 
-        if file.lower().endswith(".pdf")
-    ]
+    if not os.path.isdir(reference_folder):
+        return reference_files
 
-
-    if not reference_files:
-
-        return None
-
-
-    # Compare with every reference document
-
-    for filename in reference_files:
-
-        reference_path = os.path.join(
-            reference_folder,
-            filename
+    for root, directories, files in os.walk(reference_folder):
+        # Ignore hidden directories.
+        directories[:] = sorted(
+            directory
+            for directory in directories
+            if not directory.startswith(".")
         )
 
-        result = compare_documents(
-            uploaded_path,
+        for filename in sorted(files):
+            if filename.lower().endswith(".pdf"):
+                reference_files.append(
+                    os.path.join(root, filename)
+                )
+
+    return reference_files
+
+
+# =========================================================
+# FIND THE BEST MATCH
+# =========================================================
+
+def find_best_reference(upload_path, reference_folder):
+    """
+    Finds the closest reference PDF.
+
+    Compatible with the existing app.py call:
+        find_best_reference(filepath, REFERENCE_FOLDER)
+
+    Returns a dictionary containing:
+        similarity
+        filename
+        status
+        document_type
+        reference_count
+        matching_category_count
+        explanation
+    """
+
+    empty_result = {
+        "similarity": 0.0,
+        "filename": None,
+        "status": "NO_REFERENCE",
+        "document_type": "UNKNOWN",
+        "reference_count": 0,
+        "matching_category_count": 0,
+        "explanation": "",
+    }
+
+    # -----------------------------------------------------
+    # Load uploaded document
+    # -----------------------------------------------------
+
+    uploaded_image, uploaded_text = load_document_page(
+        upload_path
+    )
+
+    if uploaded_image is None:
+        empty_result["status"] = "COMPARISON_FAILED"
+        empty_result["explanation"] = (
+            "The uploaded document could not be read for "
+            "visual comparison."
+        )
+        return empty_result
+
+    uploaded_type = detect_document_type(
+        uploaded_text,
+        os.path.basename(upload_path)
+    )
+
+    # -----------------------------------------------------
+    # Find PDF references
+    # -----------------------------------------------------
+
+    reference_files = get_reference_files(
+        reference_folder
+    )
+
+    empty_result["document_type"] = uploaded_type
+    empty_result["reference_count"] = len(reference_files)
+
+    if not reference_files:
+        empty_result["explanation"] = (
+            "No PDF reference documents were found. "
+            "Add verified reference PDFs before comparing."
+        )
+        return empty_result
+
+    # -----------------------------------------------------
+    # Load usable reference samples
+    # -----------------------------------------------------
+
+    references = []
+
+    for reference_path in reference_files:
+        reference_image, reference_text = load_document_page(
             reference_path
         )
 
-        similarity = result["similarity"]
+        if reference_image is None:
+            print(
+                "Skipping unreadable reference:",
+                reference_path
+            )
+            continue
 
+        reference_type = detect_document_type(
+            reference_text,
+            os.path.basename(reference_path)
+        )
 
-        if similarity > best_similarity:
+        references.append({
+            "path": reference_path,
+            "image": reference_image,
+            "type": reference_type,
+        })
 
-            best_similarity = similarity
+    if not references:
+        empty_result["status"] = "COMPARISON_FAILED"
+        empty_result["explanation"] = (
+            "Reference PDFs were found, but none could be "
+            "read successfully."
+        )
+        return empty_result
 
-            best_match = {
+    # -----------------------------------------------------
+    # Prefer references of the same document type
+    # -----------------------------------------------------
 
-                "filename": filename,
+    matching_references = []
 
-                "similarity": similarity,
+    if uploaded_type != "UNKNOWN":
+        matching_references = [
+            reference
+            for reference in references
+            if reference["type"] == uploaded_type
+        ]
 
-                "status": result["status"]
-            }
+    if matching_references:
+        candidates = matching_references
 
+        explanation = (
+            "Compared against references classified as "
+            + uploaded_type
+            + "."
+        )
 
-    return best_match
+    else:
+        # Do not return a false "no match" just because a
+        # reference filename or PDF contains little text.
+        candidates = references
+
+        explanation = (
+            "No reference could be confidently classified as "
+            + uploaded_type
+            + ". Compared against all readable references; "
+            "the result may be less relevant."
+        )
+
+    # -----------------------------------------------------
+    # Compare uploaded page against candidate references
+    # -----------------------------------------------------
+
+    best_reference = None
+    best_score = -1.0
+
+    for reference in candidates:
+        score = compare_documents(
+            uploaded_image,
+            reference["image"]
+        )
+
+        if score > best_score:
+            best_score = score
+            best_reference = reference
+
+    if best_reference is None:
+        empty_result["status"] = "COMPARISON_FAILED"
+        empty_result["explanation"] = (
+            "No reference could be compared successfully."
+        )
+        return empty_result
+
+    # -----------------------------------------------------
+    # Return a compatible result
+    # -----------------------------------------------------
+
+    relative_filename = os.path.relpath(
+        best_reference["path"],
+        reference_folder
+    )
+
+    result = {
+        "similarity": round(
+            max(0.0, min(100.0, best_score)),
+            2
+        ),
+        "filename": relative_filename,
+        "status": "COMPARISON_COMPLETE",
+        "document_type": uploaded_type,
+        "reference_count": len(references),
+        "matching_category_count": len(
+            matching_references
+        ),
+        "explanation": explanation,
+    }
+
+    print("\n===== SMART REFERENCE MATCHING =====")
+    print("Uploaded document:", os.path.basename(upload_path))
+    print("Detected type:", uploaded_type)
+    print("Readable references:", len(references))
+    print("Category-matched references:", len(matching_references))
+    print("Best reference:", relative_filename)
+    print("Visual similarity:", result["similarity"], "%")
+    print("Explanation:", explanation)
+    print("====================================\n")
+
+    return result
